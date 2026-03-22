@@ -89,6 +89,22 @@ static bool save_dialog(char *buff, size_t size, const char *filters, const char
   return GetSaveFileName(&ofn) != 0;
 }
 
+static BOOL append_menu_text_codepage(HMENU menu, UINT flags, UINT_PTR item_id, const char *text, UINT codepage) {
+  if (text == NULL)
+    return AppendMenu(menu, flags, item_id, NULL);
+
+  wchar_t wide_text[4096];
+  int length = MultiByteToWideChar(codepage, 0, text, -1, wide_text, ARRAY_COUNT(wide_text));
+  if (length > 0)
+    return AppendMenuW(menu, flags, item_id, wide_text);
+
+  return AppendMenu(menu, flags, item_id, text);
+}
+
+static BOOL append_controller_menu_text(HMENU menu, UINT flags, UINT_PTR item_id, const char *text) {
+  return append_menu_text_codepage(menu, flags, item_id, text, CP_UTF8);
+}
+
 
 // Numeric edit control
 #define EN_VALUE_VALID      0xFE01
@@ -1016,22 +1032,23 @@ setting_pages[] = {
 static int setting_selected_page = IDD_SETTING_PLAY;
 
 static void add_setting_page(HWND list, const char *text, int page_id) {
-  TVINSERTSTRUCT tvins;
-
-  tvins.item.mask = TVIF_TEXT | TVIF_PARAM;
-  tvins.item.pszText = (char *)text;
-  tvins.item.cchTextMax = 0;
-
+  LPARAM page_param = 0;
   for (int i = 0; i < ARRAY_COUNT(setting_pages); i++) {
     if (setting_pages[i].dialog == page_id) {
-      tvins.item.lParam = i;
+      page_param = i;
+      break;
     }
   }
 
+  TVINSERTSTRUCT tvins = {};
+  tvins.item.mask = TVIF_TEXT | TVIF_PARAM;
+  tvins.item.pszText = (char *)text;
+  tvins.item.cchTextMax = 0;
+  tvins.item.lParam = page_param;
   tvins.hInsertAfter = NULL;
   tvins.hParent = TVI_ROOT;
 
-  setting_pages[tvins.item.lParam].item = TreeView_InsertItem(list, &tvins);
+  setting_pages[page_param].item = TreeView_InsertItem(list, &tvins);
 }
 
 static INT_PTR CALLBACK settings_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -1726,8 +1743,15 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
       EnableMenuItem(menu, MENU_ID_FILE_STOP, MF_BYCOMMAND | (song_is_playing() || song_is_recording() ? MF_ENABLED : MF_DISABLED));
       EnableMenuItem(menu, MENU_ID_FILE_RECORD, MF_BYCOMMAND | (!song_is_recording() ? MF_ENABLED : MF_DISABLED));
 
-      bool enable_export = (config_get_instrument_type() == INSTRUMENT_TYPE_VSTI) && !song_is_empty();
-      EnableMenuItem(menu, (UINT)menu_export, MF_BYCOMMAND | (enable_export ? MF_ENABLED : MF_DISABLED));
+      bool enable_wav_export = (config_get_instrument_type() == INSTRUMENT_TYPE_VSTI) && !song_is_empty();
+#if defined(FREEPIANO_NO_X264_EXPORT)
+      bool enable_mp4_export = false;
+#else
+      bool enable_mp4_export = enable_wav_export;
+#endif
+      EnableMenuItem(menu_export, MENU_ID_FILE_EXPORT_MP4, MF_BYCOMMAND | (enable_mp4_export ? MF_ENABLED : MF_DISABLED));
+      EnableMenuItem(menu_export, MENU_ID_FILE_EXPORT_WAV, MF_BYCOMMAND | (enable_wav_export ? MF_ENABLED : MF_DISABLED));
+      EnableMenuItem(menu, 2, MF_BYPOSITION | ((enable_mp4_export || enable_wav_export) ? MF_ENABLED : MF_DISABLED));
     }
     else if (menu == menu_play_speed) {
       static const char *speeds[] = { "0.25x", "0.5x", "1.0x", "2.0x" };
@@ -2023,11 +2047,11 @@ static INT_PTR CALLBACK key_setting_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
            while (lang_text_readline(line, sizeof(line))) {
              if (line[0] == '*') {
                target_menu = CreatePopupMenu();
-               AppendMenu(menu, MF_POPUP, (UINT_PTR)target_menu, line + 1);
+               append_controller_menu_text(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(target_menu), line + 1);
 
              }
              if (line[0] == '#')
-               AppendMenu(target_menu, MF_STRING, ++id, line + 1);
+               append_controller_menu_text(target_menu, MF_STRING, static_cast<UINT_PTR>(++id), line + 1);
            }
 
            lang_text_close();

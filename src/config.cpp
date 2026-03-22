@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include <dinput.h>
 #include <Shlwapi.h>
 
@@ -19,6 +19,7 @@
 
 #include <string>
 #include <map>
+#include <vector>
 
 // -----------------------------------------------------------------------------------------
 // config defines
@@ -37,6 +38,49 @@ struct name_t {
   uint value;
   uint lang;
 };
+
+static std::vector<char*> localized_name_strings;
+
+static const char* utf8_to_local_name(const char *text) {
+  if (text == NULL)
+    return NULL;
+
+  bool has_non_ascii = false;
+  for (const unsigned char *s = reinterpret_cast<const unsigned char*>(text); *s; s++) {
+    if (*s & 0x80) {
+      has_non_ascii = true;
+      break;
+    }
+  }
+  if (!has_non_ascii)
+    return text;
+
+  int wide_length = MultiByteToWideChar(CP_UTF8, 0, text, -1, NULL, 0);
+  if (wide_length <= 0)
+    return text;
+
+  wchar_t *wide_text = new wchar_t[wide_length];
+  MultiByteToWideChar(CP_UTF8, 0, text, -1, wide_text, wide_length);
+
+  int local_length = WideCharToMultiByte(CP_ACP, 0, wide_text, -1, NULL, 0, NULL, NULL);
+  if (local_length <= 0) {
+    delete[] wide_text;
+    return text;
+  }
+
+  char *local_text = new char[local_length];
+  WideCharToMultiByte(CP_ACP, 0, wide_text, -1, local_text, local_length, NULL, NULL);
+  delete[] wide_text;
+  localized_name_strings.push_back(local_text);
+  return local_text;
+}
+
+static void localize_name_table(name_t *names, uint count) {
+  for (uint i = 0; i < count; i++)
+    names[i].name = utf8_to_local_name(names[i].name);
+}
+
+static void localize_config_name_tables();
 
 static name_t key_names[] = {
   { "Esc",            DIK_ESCAPE },
@@ -170,10 +214,10 @@ static name_t bind_names[] = {
   { "Label",              BIND_TYPE_LABEL },
   { "Color",              BIND_TYPE_COLOR },
 
-  { "���̰���",            BIND_TYPE_KEYDOWN,     FP_LANG_SCHINESE },
-  { "�����ɿ�",            BIND_TYPE_KEYUP,       FP_LANG_SCHINESE },
-  { "��ǩ",                BIND_TYPE_LABEL,       FP_LANG_SCHINESE },
-  { "��ɫ",                BIND_TYPE_COLOR,       FP_LANG_SCHINESE },
+  { u8"\u952E\u76D8\u6309\u4E0B",            BIND_TYPE_KEYDOWN,     FP_LANG_SCHINESE },
+  { u8"\u952E\u76D8\u677E\u5F00",            BIND_TYPE_KEYUP,       FP_LANG_SCHINESE },
+  { u8"\u6807\u7B7E",                BIND_TYPE_LABEL,       FP_LANG_SCHINESE },
+  { u8"\u989C\u8272",                BIND_TYPE_COLOR,       FP_LANG_SCHINESE },
 
   // for compatibility
   { "Key",                BIND_TYPE_KEYDOWN },
@@ -204,28 +248,28 @@ static name_t action_names[] = {
   { "Sustain",            SM_SUSTAIN },
   { "Modulation",         SM_MODULATION },
 
-  { "����",               SM_KEY_SIGNATURE,       FP_LANG_SCHINESE },
-  { "�˶�",               SM_OCTAVE,              FP_LANG_SCHINESE },
-  { "����",               SM_VELOCITY,            FP_LANG_SCHINESE },
-  { "ͨ��",               SM_CHANNEL,             FP_LANG_SCHINESE },
-  { "��λ",               SM_TRANSPOSE,           FP_LANG_SCHINESE },
-  { "��������",           SM_FOLLOW_KEY,          FP_LANG_SCHINESE },
-  { "������",             SM_VOLUME,              FP_LANG_SCHINESE },
-  { "����",               SM_PLAY,                FP_LANG_SCHINESE },
-  { "¼��",               SM_RECORD,              FP_LANG_SCHINESE },
-  { "ֹͣ",               SM_STOP,                FP_LANG_SCHINESE },
-  { "����",               SM_SETTING_GROUP,       FP_LANG_SCHINESE },
-  { "��������",           SM_SETTING_GROUP_COUNT, FP_LANG_SCHINESE },
-  { "����",               SM_NOTE_ON,             FP_LANG_SCHINESE },
-  { "ֹ��",               SM_NOTE_OFF,            FP_LANG_SCHINESE },
-  { "��������",           SM_NOTE_PRESSURE,       FP_LANG_SCHINESE },
-  { "ͨ������",           SM_PRESSURE,            FP_LANG_SCHINESE },
-  { "����",               SM_PITCH,               FP_LANG_SCHINESE },
-  { "����",               SM_PROGRAM,             FP_LANG_SCHINESE },
-  { "������1",            SM_BANK_MSB,            FP_LANG_SCHINESE },
-  { "������2",            SM_BANK_LSB,            FP_LANG_SCHINESE },
-  { "����",               SM_SUSTAIN,             FP_LANG_SCHINESE },
-  { "����",               SM_MODULATION,          FP_LANG_SCHINESE },
+  { u8"\u66F2\u8C03",               SM_KEY_SIGNATURE,       FP_LANG_SCHINESE },
+  { u8"\u516B\u5EA6",               SM_OCTAVE,              FP_LANG_SCHINESE },
+  { u8"\u529B\u5EA6",               SM_VELOCITY,            FP_LANG_SCHINESE },
+  { u8"\u901A\u9053",               SM_CHANNEL,             FP_LANG_SCHINESE },
+  { u8"\u79FB\u4F4D",               SM_TRANSPOSE,           FP_LANG_SCHINESE },
+  { u8"\u8DDF\u968F\u66F2\u8C03",           SM_FOLLOW_KEY,          FP_LANG_SCHINESE },
+  { u8"\u603B\u97F3\u91CF",             SM_VOLUME,              FP_LANG_SCHINESE },
+  { u8"\u64AD\u653E",               SM_PLAY,                FP_LANG_SCHINESE },
+  { u8"\u5F55\u5236",               SM_RECORD,              FP_LANG_SCHINESE },
+  { u8"\u505C\u6B62",               SM_STOP,                FP_LANG_SCHINESE },
+  { u8"\u5206\u7EC4",               SM_SETTING_GROUP,       FP_LANG_SCHINESE },
+  { u8"\u5206\u7EC4\u603B\u6570",           SM_SETTING_GROUP_COUNT, FP_LANG_SCHINESE },
+  { u8"\u97F3\u7B26",               SM_NOTE_ON,             FP_LANG_SCHINESE },
+  { u8"\u6B62\u97F3",               SM_NOTE_OFF,            FP_LANG_SCHINESE },
+  { u8"\u97F3\u7B26\u529B\u5EA6",           SM_NOTE_PRESSURE,       FP_LANG_SCHINESE },
+  { u8"\u901A\u9053\u529B\u5EA6",           SM_PRESSURE,            FP_LANG_SCHINESE },
+  { u8"\u5F2F\u97F3",               SM_PITCH,               FP_LANG_SCHINESE },
+  { u8"\u4E50\u5668",               SM_PROGRAM,             FP_LANG_SCHINESE },
+  { u8"\u4E50\u5668\u7EC41",            SM_BANK_MSB,            FP_LANG_SCHINESE },
+  { u8"\u4E50\u5668\u7EC42",            SM_BANK_LSB,            FP_LANG_SCHINESE },
+  { u8"\u5EF6\u97F3",               SM_SUSTAIN,             FP_LANG_SCHINESE },
+  { u8"\u98A4\u97F3",               SM_MODULATION,          FP_LANG_SCHINESE },
 
   // pervious names
   { "Octshift",           SM_OCTAVE },
@@ -449,18 +493,18 @@ static name_t value_action_names[] = {
   { "SyncFlip",       0x13 },
   { "SyncPress",      0x14 },
 
-  { "����Ϊ",         0x00,      FP_LANG_SCHINESE },
-  { "����",           0x01,      FP_LANG_SCHINESE },
-  { "����",           0x02,      FP_LANG_SCHINESE },
-  { "��ת",           0x03,      FP_LANG_SCHINESE },
-  { "����",           0x04,      FP_LANG_SCHINESE },
-  { "����ʮλ",       0x0a,      FP_LANG_SCHINESE },
-  { "���ø�λ",       0x0b,      FP_LANG_SCHINESE },
-  { "ͬ������",       0x10,      FP_LANG_SCHINESE },
-  { "ͬ������",       0x11,      FP_LANG_SCHINESE },
-  { "ͬ������",       0x12,      FP_LANG_SCHINESE },
-  { "ͬ����ת",       0x13,      FP_LANG_SCHINESE },
-  { "ͬ������",       0x14,      FP_LANG_SCHINESE },
+  { u8"\u8BBE\u7F6E\u4E3A",         0x00,      FP_LANG_SCHINESE },
+  { u8"\u589E\u52A0",           0x01,      FP_LANG_SCHINESE },
+  { u8"\u51CF\u5C11",           0x02,      FP_LANG_SCHINESE },
+  { u8"\u53CD\u8F6C",           0x03,      FP_LANG_SCHINESE },
+  { u8"\u8109\u51B2",           0x04,      FP_LANG_SCHINESE },
+  { u8"\u8BBE\u7F6E\u5341\u4F4D",       0x0a,      FP_LANG_SCHINESE },
+  { u8"\u8BBE\u7F6E\u4E2A\u4F4D",       0x0b,      FP_LANG_SCHINESE },
+  { u8"\u540C\u6B65\u8BBE\u7F6E",       0x10,      FP_LANG_SCHINESE },
+  { u8"\u540C\u6B65\u589E\u52A0",       0x11,      FP_LANG_SCHINESE },
+  { u8"\u540C\u6B65\u51CF\u5C11",       0x12,      FP_LANG_SCHINESE },
+  { u8"\u540C\u6B65\u53CD\u8F6C",       0x13,      FP_LANG_SCHINESE },
+  { u8"\u540C\u6B65\u8109\u51B2",       0x14,      FP_LANG_SCHINESE },
 };
 
 static name_t instrument_type_names[] = {
@@ -538,40 +582,52 @@ static name_t channel_names[] = {
   { "Ch_14",     0x0e },
   { "Ch_15",     0x0f },
 
-  { "����_0",     0x00,     FP_LANG_SCHINESE },
-  { "����_1",     0x01,     FP_LANG_SCHINESE },
-  { "����_2",     0x02,     FP_LANG_SCHINESE },
-  { "����_3",     0x03,     FP_LANG_SCHINESE },
-  { "����_4",     0x04,     FP_LANG_SCHINESE },
-  { "����_5",     0x05,     FP_LANG_SCHINESE },
-  { "����_6",     0x06,     FP_LANG_SCHINESE },
-  { "����_7",     0x07,     FP_LANG_SCHINESE },
-  { "����_8",     0x08,     FP_LANG_SCHINESE },
-  { "����_9",     0x09,     FP_LANG_SCHINESE },
-  { "����_10",    0x0a,     FP_LANG_SCHINESE },
-  { "����_11",    0x0b,     FP_LANG_SCHINESE },
-  { "����_12",    0x0c,     FP_LANG_SCHINESE },
-  { "����_13",    0x0d,     FP_LANG_SCHINESE },
-  { "����_14",    0x0e,     FP_LANG_SCHINESE },
-  { "����_15",    0x0f,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u5165_0",     0x00,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u5165_1",     0x01,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u5165_2",     0x02,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u5165_3",     0x03,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u5165_4",     0x04,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u5165_5",     0x05,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u5165_6",     0x06,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u5165_7",     0x07,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u5165_8",     0x08,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u5165_9",     0x09,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u5165_10",    0x0a,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u5165_11",    0x0b,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u5165_12",    0x0c,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u5165_13",    0x0d,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u5165_14",    0x0e,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u5165_15",    0x0f,     FP_LANG_SCHINESE },
 
-  { "���_0",     0x10,     FP_LANG_SCHINESE },
-  { "���_1",     0x11,     FP_LANG_SCHINESE },
-  { "���_2",     0x12,     FP_LANG_SCHINESE },
-  { "���_3",     0x13,     FP_LANG_SCHINESE },
-  { "���_4",     0x14,     FP_LANG_SCHINESE },
-  { "���_5",     0x15,     FP_LANG_SCHINESE },
-  { "���_6",     0x16,     FP_LANG_SCHINESE },
-  { "���_7",     0x17,     FP_LANG_SCHINESE },
-  { "���_8",     0x18,     FP_LANG_SCHINESE },
-  { "���_9",     0x19,     FP_LANG_SCHINESE },
-  { "���_10",    0x1a,     FP_LANG_SCHINESE },
-  { "���_11",    0x1b,     FP_LANG_SCHINESE },
-  { "���_12",    0x1c,     FP_LANG_SCHINESE },
-  { "���_13",    0x1d,     FP_LANG_SCHINESE },
-  { "���_14",    0x1e,     FP_LANG_SCHINESE },
-  { "���_15",    0x1f,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u51FA_0",     0x10,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u51FA_1",     0x11,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u51FA_2",     0x12,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u51FA_3",     0x13,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u51FA_4",     0x14,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u51FA_5",     0x15,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u51FA_6",     0x16,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u51FA_7",     0x17,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u51FA_8",     0x18,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u51FA_9",     0x19,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u51FA_10",    0x1a,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u51FA_11",    0x1b,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u51FA_12",    0x1c,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u51FA_13",    0x1d,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u51FA_14",    0x1e,     FP_LANG_SCHINESE },
+  { u8"\u8F93\u51FA_15",    0x1f,     FP_LANG_SCHINESE },
 };
+
+static void localize_config_name_tables() {
+  static bool initialized = false;
+  if (initialized)
+    return;
+
+  localize_name_table(bind_names, ARRAY_COUNT(bind_names));
+  localize_name_table(action_names, ARRAY_COUNT(action_names));
+  localize_name_table(value_action_names, ARRAY_COUNT(value_action_names));
+  localize_name_table(channel_names, ARRAY_COUNT(channel_names));
+  initialized = true;
+}
 
 // -----------------------------------------------------------------------------------------
 // configurations
@@ -2353,6 +2409,7 @@ int config_save(const char *filename) {
 int config_init() {
   thread_lock lock(config_lock);
 
+  localize_config_name_tables();
   config_reset();
   return 0;
 }

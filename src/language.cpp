@@ -1,9 +1,37 @@
 #include "pch.h"
 #include "language.h"
 
+#include <vector>
+
 static int lang_current;
 static const char* string_names[FP_IDS_COUNT];
 static const char* string_table[FP_LANG_COUNT][FP_IDS_COUNT];
+static std::vector<char*> localized_strings;
+
+static const char* utf8_to_local(const char *text) {
+  if (text == NULL)
+    return NULL;
+
+  int wide_length = MultiByteToWideChar(CP_UTF8, 0, text, -1, NULL, 0);
+  if (wide_length <= 0)
+    return text;
+
+  wchar_t *wide_text = new wchar_t[wide_length];
+  MultiByteToWideChar(CP_UTF8, 0, text, -1, wide_text, wide_length);
+
+  int local_length = WideCharToMultiByte(CP_ACP, 0, wide_text, -1, NULL, 0, NULL, NULL);
+  if (local_length <= 0) {
+    delete[] wide_text;
+    return text;
+  }
+
+  char *local_text = new char[local_length];
+  WideCharToMultiByte(CP_ACP, 0, wide_text, -1, local_text, local_length, NULL, NULL);
+  delete[] wide_text;
+
+  localized_strings.push_back(local_text);
+  return local_text;
+}
 
 static WORD system_language(int lang_id) {
   switch (lang_id) {
@@ -22,8 +50,8 @@ void lang_init() {
     }
   }
 
-#define STR_ENGLISH(id, str) string_table[FP_LANG_ENGLISH][id] = str; string_names[id] = #id;
-#define STR_SCHINESE(id, str) string_table[FP_LANG_SCHINESE][id] = str;
+#define STR_ENGLISH(id, str) string_table[FP_LANG_ENGLISH][id] = utf8_to_local(str); string_names[id] = #id;
+#define STR_SCHINESE(id, str) string_table[FP_LANG_SCHINESE][id] = utf8_to_local(str);
 #include "language_strdef.h"
 #undef STR_ENGLISH
 #undef STR_SCHINESE
@@ -204,6 +232,10 @@ const char * lang_get_last_error() {
 }
 
 
+static void set_window_text_localized(HWND hwnd, const char *text) {
+  SetWindowText(hwnd, text);
+}
+
 static BOOL CALLBACK localize_hwnd(HWND hwnd, LPARAM lParam) {
   char className[256];
   char text[32];
@@ -212,7 +244,7 @@ static BOOL CALLBACK localize_hwnd(HWND hwnd, LPARAM lParam) {
 
   for (int i = 1; i < FP_IDS_COUNT; i++) {
     if (strcmp(text, string_names[i]) == 0) {
-      SetWindowText(hwnd, lang_load_string(i));
+      set_window_text_localized(hwnd, lang_load_string(i));
       return TRUE;
     }
   }
