@@ -1,4 +1,4 @@
-#pragma once;
+#pragma once
 
 struct vsti_enum_callback {
   virtual void operator () (const char *value) = 0;

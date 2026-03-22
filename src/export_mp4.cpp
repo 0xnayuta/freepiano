@@ -1,12 +1,24 @@
 #include "pch.h"
 
 #include "export_mp4.h"
+
+#if defined(FREEPIANO_NO_X264_EXPORT)
+
+int export_mp4(const char *filename) {
+  (void)filename;
+  return -1;
+}
+
+#else
+
 #include "gui.h"
 #include "song.h"
 #include "synthesizer_vst.h"
 #include "display.h"
 #include "config.h"
 #include "export.h"
+
+#include <stdint.h>
 
 #include "../3rd/mp4v2/mp4.h"
 #include "../3rd/libfaac/faac.h"
@@ -449,3 +461,5 @@ int export_mp4(const char *filename) {
   export_done();
   return 0;
 }
+
+#endif

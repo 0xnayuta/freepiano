@@ -28,7 +28,6 @@
 #define _WIN32_WINNT 0x0400
 #endif
 #define _WINSOCKAPI_
-#define _INTEGRAL_MAX_BITS 64
 #ifndef __GNUC__
 #define _CRT_SECURE_NO_DEPRECATE 1
 #ifndef _WIN32
@@ -55,6 +54,7 @@ typedef unsigned short in_port_t;
 typedef int socklen_t;
 typedef int ssize_t;
 typedef unsigned int uint;
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
 static inline int snprintf(char *buffer, size_t count,
 			  const char *format, ...) {
   va_list ap;
@@ -68,6 +68,7 @@ static inline int snprintf(char *buffer, size_t count,
   }
   return ret;
 }
+#endif
 #define strncasecmp _strnicmp
 #define strcasecmp _stricmp
 #define localtime_r(a,b) localtime_s(b,a)
@@ -129,7 +130,7 @@ int gettimeofday(struct timeval *t, void *);
 #define LOG_INFO 6
 #define LOG_DEBUG 7
 
-#if     defined (__GNUC__) || (!__STDC__ && _INTEGRAL_MAX_BITS >= 64)
+#if     defined (__GNUC__) || (!__STDC__ && defined(_INTEGRAL_MAX_BITS) && _INTEGRAL_MAX_BITS >= 64)
 #define VAR_TO_FPOS(fpos, var) (fpos) = (var)
 #define FPOS_TO_VAR(fpos, typed, var) (var) = (typed)(fpos)
 #else

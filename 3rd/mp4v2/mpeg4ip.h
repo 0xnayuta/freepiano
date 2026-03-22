@@ -169,9 +169,9 @@ char *strcasestr(const char *haystack, const char *needle);
 /*****************************************************************************
  *             Generic type includes used in the whole package               *
  *****************************************************************************/
-#define D64  "%"D64F
-#define U64  "%"U64F
-#define X64 "%"X64F
+#define D64  "%" D64F
+#define U64  "%" U64F
+#define X64 "%" X64F
 
 #define M_LLU TO_U64(1000)
 #define M_64 TO_U64(1000)
