@@ -94,6 +94,10 @@ static bool save_dialog(char *buff, size_t size, const char *filters, const char
 #define EN_VALUE_VALID      0xFE01
 #define EN_VALUE_INVALID    0xFE02
 
+static int lparam_to_int(LPARAM value) {
+  return static_cast<int>(value);
+}
+
 static LRESULT CALLBACK NumericEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
   switch (uMsg) {
   case WM_CHAR:
@@ -105,7 +109,7 @@ static LRESULT CALLBACK NumericEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPA
     break;
 
   case WM_SETFOCUS:
-    PostMessage(hWnd, EM_SETSEL, 0, -1);
+    PostMessage(hWnd, EM_SETSEL, 0, static_cast<LPARAM>(-1));
     break;
 
   case WM_KILLFOCUS:
@@ -120,7 +124,7 @@ static LRESULT CALLBACK NumericEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPA
           GetWindowText(hWnd, temp, sizeof(temp));
 
           if (sscanf(temp, (const char*)dwRefData, &value) == 1)
-            PostMessage(parent, WM_COMMAND, MAKEWPARAM(id, EN_VALUE_VALID), (LPARAM)value);
+            PostMessage(parent, WM_COMMAND, MAKEWPARAM(id, EN_VALUE_VALID), static_cast<LPARAM>(value));
           else
             PostMessage(parent, WM_COMMAND, MAKEWPARAM(id, EN_VALUE_INVALID), 0);
         }
@@ -138,25 +142,27 @@ static LRESULT CALLBACK NumericEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPA
 static void update_numeric_edit(HWND hwnd, int itemid, const char *value, const char* format) {
   HWND edit = GetDlgItem(hwnd, itemid);
   SetWindowText(edit, value);
-  SetWindowSubclass(edit, NumericEditProc, 0, (DWORD_PTR)format);
+  SetWindowSubclass(edit, NumericEditProc, 0, reinterpret_cast<DWORD_PTR>(format));
 }
 
 static void update_numeric_edit(HWND hwnd, int itemid, int value) {
   char buff[32];
   _snprintf(buff, sizeof(buff), "%d", value);
+  buff[sizeof(buff) - 1] = 0;
   update_numeric_edit(hwnd, itemid, buff, "%d");
 }
 
 static void update_numeric_edit(HWND hwnd, int itemid, double value) {
   char buff[32];
   _snprintf(buff, sizeof(buff), "%g", value);
+  buff[sizeof(buff) - 1] = 0;
   update_numeric_edit(hwnd, itemid, buff, "%g");
 }
 
 static void update_slider(HWND hwnd, int itemid, int value, short value_min, short value_max) {
   HWND slider = GetDlgItem(hwnd, itemid);
-  SendMessage(slider, TBM_SETRANGE, (WPARAM) TRUE, (LPARAM) MAKELONG(value_min, value_max));
-  SendMessage(slider, TBM_SETPOS, (WPARAM) TRUE, (LPARAM) value);
+  SendMessage(slider, TBM_SETRANGE, static_cast<WPARAM>(TRUE), static_cast<LPARAM>(MAKELONG(value_min, value_max)));
+  SendMessage(slider, TBM_SETPOS, static_cast<WPARAM>(TRUE), static_cast<LPARAM>(value));
 }
 
 // -----------------------------------------------------------------------------------------
@@ -339,8 +345,8 @@ static INT_PTR CALLBACK settings_midi_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
            if (column == 1) {
              menu_midi_input_enable_popup = helpers::create_popup_menu();
 
-             AppendMenu(menu_midi_input_enable_popup,  MF_STRING, (UINT_PTR)0, lang_load_string(IDS_MIDI_INPUT_LIST_ENABLED));
-             AppendMenu(menu_midi_input_enable_popup,  MF_STRING, (UINT_PTR)0, lang_load_string(IDS_MIDI_INPUT_LIST_DISABLED));
+             AppendMenu(menu_midi_input_enable_popup,  MF_STRING, static_cast<UINT_PTR>(0), lang_load_string(IDS_MIDI_INPUT_LIST_ENABLED));
+             AppendMenu(menu_midi_input_enable_popup,  MF_STRING, static_cast<UINT_PTR>(0), lang_load_string(IDS_MIDI_INPUT_LIST_DISABLED));
 
              helpers::show_popup_menu(menu_midi_input_enable_popup, hWnd);
            }
@@ -348,11 +354,11 @@ static INT_PTR CALLBACK settings_midi_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
            else if (column == 2) {
              menu_midi_input_channel_popup = helpers::create_popup_menu();
 
-             AppendMenu(menu_midi_input_channel_popup,  MF_STRING, (UINT_PTR)0, lang_load_string(IDS_MIDI_INPUT_LIST_REMAP_OUTPUT));
+             AppendMenu(menu_midi_input_channel_popup,  MF_STRING, static_cast<UINT_PTR>(0), lang_load_string(IDS_MIDI_INPUT_LIST_REMAP_OUTPUT));
              for (int i = 0; i < 16; i++) {
                char buff[256];
                lang_format_string(buff, sizeof(buff), IDS_MIDI_INPUT_LIST_REMAP_INPUT, i);
-               AppendMenu(menu_midi_input_channel_popup,  MF_STRING, (UINT_PTR)0, buff);
+               AppendMenu(menu_midi_input_channel_popup,  MF_STRING, static_cast<UINT_PTR>(0), buff);
              }
 
              helpers::show_popup_menu(menu_midi_input_channel_popup, hWnd);
@@ -403,6 +409,7 @@ static INT_PTR CALLBACK settings_audio_proc(HWND hWnd, UINT uMsg, WPARAM wParam,
           char buff[256];
 
           _snprintf(buff, sizeof(buff), "%s: %s", output_types[type], value);
+          buff[sizeof(buff) - 1] = 0;
           ComboBox_AddString(list, buff);
           if (config_get_output_type() == type) {
             if (_stricmp(value, config_get_output_device()) == 0) {
@@ -491,7 +498,7 @@ static INT_PTR CALLBACK settings_audio_proc(HWND hWnd, UINT uMsg, WPARAM wParam,
      }
      else if (LOWORD(wParam) == IDC_OUTPUT_DELAY) {
        if (HIWORD(wParam) == EN_VALUE_VALID) {
-         config_set_output_delay((int)lParam);
+         config_set_output_delay(lparam_to_int(lParam));
          helpers::refresh_output_delay(hWnd);
        }
        else if (HIWORD(wParam) == EN_VALUE_INVALID) {
@@ -500,7 +507,7 @@ static INT_PTR CALLBACK settings_audio_proc(HWND hWnd, UINT uMsg, WPARAM wParam,
      }
      else if (LOWORD(wParam) == IDC_OUTPUT_VOLUME) {
        if (HIWORD(wParam) == EN_VALUE_VALID) {
-         config_set_output_volume((int)lParam);
+         config_set_output_volume(lparam_to_int(lParam));
          helpers::refresh_output_volume(hWnd);
        }
        else if (HIWORD(wParam) == EN_VALUE_INVALID) {
@@ -509,7 +516,9 @@ static INT_PTR CALLBACK settings_audio_proc(HWND hWnd, UINT uMsg, WPARAM wParam,
      }
      else if (LOWORD(wParam) == IDC_PLAYBACK_SPEED) {
        if (HIWORD(wParam) == EN_VALUE_VALID) {
-         song_set_play_speed(*(float*)(&lParam));
+         char temp[64];
+         GetDlgItemText(hWnd, IDC_PLAYBACK_SPEED, temp, sizeof(temp));
+         song_set_play_speed(atof(temp));
          helpers::refresh_play_speed(hWnd);
        }
        else if (HIWORD(wParam) == EN_VALUE_INVALID) {
@@ -523,18 +532,18 @@ static INT_PTR CALLBACK settings_audio_proc(HWND hWnd, UINT uMsg, WPARAM wParam,
      HWND output_volume = GetDlgItem(hWnd, IDC_OUTPUT_VOLUME_SLIDER);
      HWND playback_speed = GetDlgItem(hWnd, IDC_PLAYBACK_SPEED_SLIDER);
 
-     if (output_delay == (HWND)lParam) {
-       int pos = SendMessage(output_delay, TBM_GETPOS, 0, 0);
+     if (output_delay == reinterpret_cast<HWND>(lParam)) {
+       int pos = static_cast<int>(SendMessage(output_delay, TBM_GETPOS, 0, 0));
        config_set_output_delay(pos);
        helpers::refresh_output_delay(hWnd);
      }
-     else if (output_volume == (HWND)lParam) {
-       int pos = SendMessage(output_volume, TBM_GETPOS, 0, 0);
+     else if (output_volume == reinterpret_cast<HWND>(lParam)) {
+       int pos = static_cast<int>(SendMessage(output_volume, TBM_GETPOS, 0, 0));
        config_set_output_volume(pos);
        helpers::refresh_output_volume(hWnd);
      }
-     else if (playback_speed == (HWND)lParam) {
-       int pos = SendMessage(playback_speed, TBM_GETPOS, 0, 0);
+     else if (playback_speed == reinterpret_cast<HWND>(lParam)) {
+       int pos = static_cast<int>(SendMessage(playback_speed, TBM_GETPOS, 0, 0));
        song_set_play_speed((double)pos / 10);
        helpers::refresh_play_speed(hWnd);
      }
@@ -562,6 +571,8 @@ static INT_PTR CALLBACK settings_play_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
       else {
         _snprintf(buff, size, "-");
       }
+      if (size > 0)
+        buff[size - 1] = 0;
     }
 
     static void refresh(HWND hWnd)
@@ -611,6 +622,7 @@ static INT_PTR CALLBACK settings_play_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         {
           char buff[256];
           _snprintf(buff, sizeof(buff), "%d", i);
+          buff[sizeof(buff) - 1] = 0;
           ComboBox_AddString(keychannel, buff);
           if (i == config_get_output_channel(channel))
             ComboBox_SetCurSel(keychannel, i);
@@ -662,7 +674,7 @@ static INT_PTR CALLBACK settings_play_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
       {
         switch (HIWORD(wParam)) {
         case EN_VALUE_VALID:
-          value = (int)lParam;
+          value = lparam_to_int(lParam);
           if (value < 0) value = 0;
           if (value > 127) value = 127;
           song_send_event(SM_VELOCITY, channel, SM_VALUE_SET, value, true);
@@ -679,7 +691,7 @@ static INT_PTR CALLBACK settings_play_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
       {
         switch (HIWORD(wParam)) {
         case EN_VALUE_VALID:
-          value = (int)lParam;
+          value = lparam_to_int(lParam);
           if (value < -48) value = -48;
           if (value > 48) value = 48;
           song_send_event(SM_TRANSPOSE, channel, SM_VALUE_SET, (char)value, true);
@@ -725,7 +737,7 @@ static INT_PTR CALLBACK settings_play_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
       {
         switch (HIWORD(wParam)) {
         case EN_VALUE_VALID:
-          value = (int)lParam;
+          value = lparam_to_int(lParam);
           if (value < 0) value = 0;
           if (value > 127) value = 127;
           song_send_event(SM_PROGRAM, channel, SM_VALUE_SET, value, true);
@@ -743,7 +755,7 @@ static INT_PTR CALLBACK settings_play_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
       {
         switch (HIWORD(wParam)) {
         case EN_VALUE_VALID:
-          value = (int)lParam;
+          value = lparam_to_int(lParam);
           if (value < 0) value = 0;
           if (value > 127) value = 127;
 
@@ -766,7 +778,7 @@ static INT_PTR CALLBACK settings_play_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
       {
         switch (HIWORD(wParam)) {
         case EN_VALUE_VALID:
-          value = (int)lParam;
+          value = lparam_to_int(lParam);
           if (value < 0) value = 0;
           if (value > 127) value = 127;
           song_send_event(SM_SUSTAIN, channel, SM_VALUE_SET, value, true);
@@ -898,13 +910,13 @@ static INT_PTR CALLBACK settings_gui_proc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 
      // key fade slider
      HWND key_fade = GetDlgItem(hWnd, IDC_GUI_KEY_ANIMATE);
-     SendMessage(key_fade, TBM_SETRANGE, (WPARAM)TRUE, (LPARAM)MAKELONG(0, 100));
-     SendMessage(key_fade, TBM_SETPOS,   (WPARAM)TRUE, (LPARAM)config_get_key_fade());
+     SendMessage(key_fade, TBM_SETRANGE, static_cast<WPARAM>(TRUE), static_cast<LPARAM>(MAKELONG(0, 100)));
+     SendMessage(key_fade, TBM_SETPOS,   static_cast<WPARAM>(TRUE), static_cast<LPARAM>(config_get_key_fade()));
 
      // gui transparency slider
      HWND key_trans = GetDlgItem(hWnd, IDC_GUI_TRANSPARENCY);
-     SendMessage(key_trans, TBM_SETRANGE, (WPARAM)TRUE, (LPARAM)MAKELONG(0, 255));
-     SendMessage(key_trans, TBM_SETPOS,   (WPARAM)TRUE, (LPARAM)config_get_gui_transparency());
+     SendMessage(key_trans, TBM_SETRANGE, static_cast<WPARAM>(TRUE), static_cast<LPARAM>(MAKELONG(0, 255)));
+     SendMessage(key_trans, TBM_SETPOS,   static_cast<WPARAM>(TRUE), static_cast<LPARAM>(config_get_gui_transparency()));
 
      // auto color combo box
      HWND auto_color = GetDlgItem(hWnd, IDC_GUI_AUTO_COLOR);
@@ -918,8 +930,8 @@ static INT_PTR CALLBACK settings_gui_proc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 
      // preview color
      HWND preview_color = GetDlgItem(hWnd, IDC_GUI_PREVIEW_COLOR);
-     SendMessage(preview_color, TBM_SETRANGE, (WPARAM)TRUE, (LPARAM)MAKELONG(0, 100));
-     SendMessage(preview_color, TBM_SETPOS,   (WPARAM)TRUE, (LPARAM)config_get_preview_color());
+     SendMessage(preview_color, TBM_SETRANGE, static_cast<WPARAM>(TRUE), static_cast<LPARAM>(MAKELONG(0, 100)));
+     SendMessage(preview_color, TBM_SETPOS,   static_cast<WPARAM>(TRUE), static_cast<LPARAM>(config_get_preview_color()));
    }
    break;
 
@@ -947,13 +959,13 @@ static INT_PTR CALLBACK settings_gui_proc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 
       case IDC_GUI_AUTO_COLOR:
         if (HIWORD(wParam) == CBN_SELCHANGE) {
-          config_set_auto_color(helpers::combobox_get_value((HWND)lParam, auto_color_options, ARRAYSIZE(auto_color_options)));
+          config_set_auto_color(helpers::combobox_get_value(reinterpret_cast<HWND>(lParam), auto_color_options, ARRAYSIZE(auto_color_options)));
         }
         break;
 
       case IDC_GUI_NOTE_DISPLAY:
         if (HIWORD(wParam) == CBN_SELCHANGE) {
-          config_set_note_display(helpers::combobox_get_value((HWND)lParam, note_display_options, ARRAYSIZE(note_display_options)));
+          config_set_note_display(helpers::combobox_get_value(reinterpret_cast<HWND>(lParam), note_display_options, ARRAYSIZE(note_display_options)));
         }
         break;
      }
@@ -964,20 +976,20 @@ static INT_PTR CALLBACK settings_gui_proc(HWND hWnd, UINT uMsg, WPARAM wParam, L
      HWND gui_transparency = GetDlgItem(hWnd, IDC_GUI_TRANSPARENCY);
      HWND gui_preview_color = GetDlgItem(hWnd, IDC_GUI_PREVIEW_COLOR);
 
-     if (key_animate == (HWND)lParam) {
-       int pos = SendMessage(key_animate, TBM_GETPOS, 0, 0);
+     if (key_animate == reinterpret_cast<HWND>(lParam)) {
+       int pos = static_cast<int>(SendMessage(key_animate, TBM_GETPOS, 0, 0));
 
        // update output delay
        config_set_key_fade(pos);
      }
-     else if (gui_transparency == (HWND)lParam) {
-       int pos = SendMessage(gui_transparency, TBM_GETPOS, 0, 0);
+     else if (gui_transparency == reinterpret_cast<HWND>(lParam)) {
+       int pos = static_cast<int>(SendMessage(gui_transparency, TBM_GETPOS, 0, 0));
 
        // update output delay
        config_set_gui_transparency(pos);
      }
-     else if (gui_preview_color == (HWND)lParam) {
-       int pos = SendMessage(gui_preview_color, TBM_GETPOS, 0, 0);
+     else if (gui_preview_color == reinterpret_cast<HWND>(lParam)) {
+       int pos = static_cast<int>(SendMessage(gui_preview_color, TBM_GETPOS, 0, 0));
 
        config_set_preview_color(pos);
      }
@@ -1584,6 +1596,7 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
           bool selected = false;
           char buffer[256];
           strncpy(buffer, value, sizeof(buffer));
+          buffer[sizeof(buffer) - 1] = 0;
 
           if (!found) {
             if (config_get_instrument_type() == INSTRUMENT_TYPE_MIDI &&
@@ -1594,7 +1607,7 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
           }
 
           strcat_s(buffer, "\tMIDI");
-          AppendMenu(menu_instrument, MF_STRING | (selected ? MF_CHECKED : 0), (UINT_PTR)(MENU_ID_INSTRUMENT_MIDI), buffer);
+          AppendMenu(menu_instrument, MF_STRING | (selected ? MF_CHECKED : 0), static_cast<UINT_PTR>(MENU_ID_INSTRUMENT_MIDI), buffer);
         }
 
         enum_midi_callback() {
@@ -1614,6 +1627,7 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             const char *start = PathFindFileName(value);
             if (start) {
               strncpy(buffer, start, sizeof(buffer));
+              buffer[sizeof(buffer) - 1] = 0;
               PathRemoveExtension(buffer);
             } else {
               strcpy_s(buffer, value);
@@ -1631,7 +1645,7 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
           }
 
           strcat_s(buffer, "\tVSTi");
-          AppendMenu(menu_instrument, MF_STRING | (selected ? MF_CHECKED : 0), (UINT_PTR)(MENU_ID_VST_PLUGIN), buffer);
+          AppendMenu(menu_instrument, MF_STRING | (selected ? MF_CHECKED : 0), static_cast<UINT_PTR>(MENU_ID_VST_PLUGIN), buffer);
         }
 
         enum_vsti_callback() {
@@ -1735,6 +1749,7 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
       for (uint i = 0; i < group_count; i++) {
         char buff[256];
         _snprintf(buff, sizeof(buff), "%d", i);
+        buff[sizeof(buff) - 1] = 0;
         AppendMenu(menu, MF_STRING | (config_get_setting_group() == i ? MF_CHECKED : 0), MENU_ID_SETTING_GROUP_CHANGE, buff);
       }
     }
@@ -2039,6 +2054,7 @@ static INT_PTR CALLBACK key_setting_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
                  } else if (id == cmd) {
                    char temp[4096];
                    _snprintf(temp, sizeof(temp), line, config_get_key_name(selected_key));
+                   temp[sizeof(temp) - 1] = 0;
                    config_parse_keymap(temp, selected_key, -1);
                  }
                }
@@ -2149,7 +2165,7 @@ static LRESULT CALLBACK windowproc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
      if (!config_get_enable_resize_window()) {
        RECT fixed_size = { 0, 0, display_get_width(), display_get_height() };
        RECT *rect = (RECT *)lParam;
-       AdjustWindowRect(&fixed_size, GetWindowLong(hWnd, GWL_STYLE), GetMenu(hWnd) != NULL);
+       AdjustWindowRect(&fixed_size, static_cast<DWORD>(GetWindowLongPtr(hWnd, GWL_STYLE)), GetMenu(hWnd) != NULL);
 
        switch (wParam) {
         case WMSZ_TOP:
@@ -2383,8 +2399,8 @@ static INT_PTR CALLBACK export_progress_proc(HWND hWnd, UINT uMsg, WPARAM wParam
      HWND progress_bar = GetDlgItem(hWnd, IDC_EXPORT_PROGRESS);
 
      SendMessage(progress_bar, PBM_SETRANGE,
-                 (WPARAM) TRUE,                  // redraw flag
-                 (LPARAM) MAKELONG(0, 100));     // min. & max. positions
+                 static_cast<WPARAM>(TRUE),                  // redraw flag
+                 static_cast<LPARAM>(MAKELONG(0, 100)));     // min. & max. positions
 
      export_hwnd = hWnd;
    }
@@ -2418,7 +2434,7 @@ int gui_show_export_progress() {
 void gui_update_export_progress(int progress) {
   // output volume slider
   HWND progress_bar = GetDlgItem(export_hwnd, IDC_EXPORT_PROGRESS);
-  PostMessage(progress_bar, PBM_SETPOS, (WPARAM)progress, 0);
+  PostMessage(progress_bar, PBM_SETPOS, static_cast<WPARAM>(progress), 0);
 }
 
 // close hide progress

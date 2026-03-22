@@ -100,6 +100,8 @@ int lang_format_string(char *buff, size_t size, uint strid, ...) {
   va_start(args, strid);
   int result = _vsnprintf(buff, size, format, args);
   va_end(args);
+  if (size > 0)
+    buff[size - 1] = 0;
   return result;
 }
 
@@ -181,7 +183,7 @@ static char error_message[1024] = "Unknown error.";
 void lang_set_last_error(const char *format, ...) {
   va_list args;
   va_start(args, format);
-  vsprintf_s(error_message, format, args);
+  vsnprintf_s(error_message, sizeof(error_message), _TRUNCATE, format, args);
   va_end(args);
   fprintf(stderr, "last_error: %s\n", error_message);
 }
@@ -191,7 +193,7 @@ void lang_set_last_error(uint id, ...) {
   const char *format = lang_load_string(id);
   va_list args;
   va_start(args, id);
-  vsprintf_s(error_message, format, args);
+  vsnprintf_s(error_message, sizeof(error_message), _TRUNCATE, format, args);
   va_end(args);
   fprintf(stderr, "last_error: %s\n", error_message);
 }

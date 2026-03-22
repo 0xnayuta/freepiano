@@ -338,7 +338,7 @@ void song_send_event(byte a, byte b, byte c, byte d, bool record) {
   // setting a key label
   if (keyboard_label_key_size) {
     char *ch = keyboard_label_text + strlen(keyboard_label_text);
-    char data[4] = { a, b, c, d };
+    char data[4] = { static_cast<char>(a), static_cast<char>(b), static_cast<char>(c), static_cast<char>(d) };
 
     for (int i = 0; i < 4; i++) {
       ch[i] = data[i];
@@ -1547,6 +1547,7 @@ int song_save(const char *filename) {
       {
         char buff[256];
         strncpy(buff, PathFindFileName(config_get_instrument_path()), sizeof(buff));
+        buff[sizeof(buff) - 1] = 0;
         PathRenameExtension(buff, "");
         write_string(buff, fp);
       }

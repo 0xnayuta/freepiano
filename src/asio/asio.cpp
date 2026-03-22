@@ -51,11 +51,11 @@ ASIOError ASIOInit(ASIODriverInfo *info)
 		theAsioDriver = 0;
 	}		
 	info->driverVersion = 0;
-	strcpy(info->name, "No ASIO Driver");
+	strcpy_s(info->name, sizeof(info->name), "No ASIO Driver");
 	theAsioDriver = getDriver();
 	if(!theAsioDriver)
 	{
-		strcpy(info->errorMessage, "Not enough memory for the ASIO driver!"); 
+		strcpy_s(info->errorMessage, sizeof(info->errorMessage), "Not enough memory for the ASIO driver!"); 
 		return ASE_NotPresent;
 	}
 	if(!theAsioDriver->init(info->sysRef))
@@ -65,7 +65,7 @@ ASIOError ASIOInit(ASIODriverInfo *info)
 		theAsioDriver = 0;
 		return ASE_NotPresent;
 	}
-	strcpy(info->errorMessage, "No ASIO Driver Error");
+	strcpy_s(info->errorMessage, sizeof(info->errorMessage), "No ASIO Driver Error");
 	theAsioDriver->getDriverName(info->name);
 	info->driverVersion = theAsioDriver->getDriverVersion();
 	return ASE_OK;
@@ -73,7 +73,7 @@ ASIOError ASIOInit(ASIODriverInfo *info)
 #else
 
 	info->driverVersion = 0;
-	strcpy(info->name, "No ASIO Driver");
+	strcpy_s(info->name, sizeof(info->name), "No ASIO Driver");
 	if(theAsioDriver)	// must be loaded!
 	{
 		if(!theAsioDriver->init(info->sysRef))
@@ -83,7 +83,7 @@ ASIOError ASIOInit(ASIODriverInfo *info)
 			return ASE_NotPresent;
 		}		
 
-		strcpy(info->errorMessage, "No ASIO Driver Error");
+		strcpy_s(info->errorMessage, sizeof(info->errorMessage), "No ASIO Driver Error");
 		theAsioDriver->getDriverName(info->name);
 		info->driverVersion = theAsioDriver->getDriverVersion();
 		return ASE_OK;
@@ -202,7 +202,7 @@ ASIOError ASIOGetChannelInfo(ASIOChannelInfo *info)
 	{
 		info->channelGroup = -1;
 		info->type = ASIOSTInt16MSB;
-		strcpy(info->name, "None");
+		strcpy_s(info->name, sizeof(info->name), "None");
 		return ASE_NotPresent;
 	}
 	return theAsioDriver->getChannelInfo(info);

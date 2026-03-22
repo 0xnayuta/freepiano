@@ -600,6 +600,7 @@ static int font_initialize() {
   for (int i = 0; i < ARRAY_COUNT(fonts); i++) {
     // load default fonts.
     _snprintf(buffer, sizeof(buffer), "%s\\%s", font_path, fonts[i]);
+    buffer[sizeof(buffer) - 1] = 0;
 
     if (PathFileExists(buffer)) {
       if (0 == FT_New_Face(font_library, buffer, 0, &font_list[font_count])) {
@@ -899,14 +900,15 @@ static void d3d_reset_parameters(D3DPRESENT_PARAMETERS &params, HWND hwnd) {
   RECT rect1, rect2;
   GetWindowRect(hwnd, &rect1);
   SetRect(&rect2, 0, 0, 0, 0);
-  AdjustWindowRect(&rect2, GetWindowLong(hwnd, GWL_STYLE), GetMenu(hwnd) != NULL);
+  AdjustWindowRect(&rect2, static_cast<DWORD>(GetWindowLongPtr(hwnd, GWL_STYLE)), GetMenu(hwnd) != NULL);
 
   params.BackBufferWidth = (rect1.right - rect1.left) - (rect2.right - rect2.left);
   params.BackBufferHeight = (rect1.bottom - rect1.top) - (rect2.bottom - rect2.top);
 
   char buff[256];
-  sprintf(buff, "%d x %d\n", params.BackBufferWidth, params.BackBufferHeight);
-  OutputDebugString(buff);
+  _snprintf(buff, sizeof(buff), "%d x %d\n", params.BackBufferWidth, params.BackBufferHeight);
+  buff[sizeof(buff) - 1] = 0;
+  OutputDebugStringA(buff);
 
 #if SCALE_DISPLAY
   display_width = display_get_width();
@@ -1408,6 +1410,7 @@ void display_default_skin() {
     // try to load texture from develop path
     char temp[256];
     _snprintf(temp, sizeof(temp), "..\\res\\%s", default_skins[i]);
+    temp[sizeof(temp) - 1] = 0;
     resources[i].texture = load_png_from_file(temp);
 #endif
 
@@ -2012,9 +2015,11 @@ static void control_set_text(gui_control_t *ctl, const char *format, ...) {
 
   va_list args;
   va_start(args, format);
-  int len = vsnprintf(buff, sizeof(buff) - 1, format, args);
-  buff[len] = 0;
+  int len = vsnprintf(buff, sizeof(buff), format, args);
   va_end(args);
+
+  if (len < 0 || len >= static_cast<int>(sizeof(buff)))
+    buff[sizeof(buff) - 1] = 0;
 
   if (strcmp(buff, ctl->text)) {
     strcpy_s(ctl->text, buff);
@@ -2749,7 +2754,7 @@ int display_process_message(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
      POINT cursor_pos;
      GetCursorPos(&cursor_pos);
      ScreenToClient(hWnd, &cursor_pos);
-     mouse_control(hWnd, uMsg, cursor_pos.x, cursor_pos.y, (short)HIWORD(wParam) / 120);
+     mouse_control(hWnd, uMsg, cursor_pos.x, cursor_pos.y, GET_WHEEL_DELTA_WPARAM(wParam) / WHEEL_DELTA);
    }
    break;
 
@@ -2768,5 +2773,5 @@ int display_process_message(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
 // capture bitmap
 int display_capture_bitmap_I420(unsigned char * *planes, int *strikes) {
-  return SendMessage(gui_get_window(), WM_USER + 10, (WPARAM)planes, (LPARAM)strikes);
+  return static_cast<int>(SendMessage(gui_get_window(), WM_USER + 10, reinterpret_cast<WPARAM>(planes), reinterpret_cast<LPARAM>(strikes)));
 }

@@ -191,13 +191,24 @@ int wasapi_open(const char *name) {
   bool supported = false;
   if (pwfx->wFormatTag == WAVE_FORMAT_EXTENSIBLE) {
     WAVEFORMATEXTENSIBLE* format = (WAVEFORMATEXTENSIBLE*)pwfx;
-    if (format->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT) {\
+    if (format->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT) {
       if (pwfx->wBitsPerSample == 32) {
         supported = true;
       }
     }
-    fprintf(stdout, "WASAPI: name=%s, format={%x, %x, %x, %x}, bits=%d, samplerate=%d\n", 
-      name, format->SubFormat.Data1, format->SubFormat.Data2, format->SubFormat.Data3, format->SubFormat.Data4,
+    fprintf(stdout, "WASAPI: name=%s, format={%08lx, %04x, %04x, %02x%02x%02x%02x%02x%02x%02x%02x}, bits=%d, samplerate=%d\n", 
+      name,
+      static_cast<unsigned long>(format->SubFormat.Data1),
+      static_cast<unsigned int>(format->SubFormat.Data2),
+      static_cast<unsigned int>(format->SubFormat.Data3),
+      static_cast<unsigned int>(format->SubFormat.Data4[0]),
+      static_cast<unsigned int>(format->SubFormat.Data4[1]),
+      static_cast<unsigned int>(format->SubFormat.Data4[2]),
+      static_cast<unsigned int>(format->SubFormat.Data4[3]),
+      static_cast<unsigned int>(format->SubFormat.Data4[4]),
+      static_cast<unsigned int>(format->SubFormat.Data4[5]),
+      static_cast<unsigned int>(format->SubFormat.Data4[6]),
+      static_cast<unsigned int>(format->SubFormat.Data4[7]),
       pwfx->wBitsPerSample, pwfx->nSamplesPerSec);
   }
 

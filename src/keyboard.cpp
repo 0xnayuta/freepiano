@@ -172,6 +172,7 @@ void keyboard_enum_keymap(keymap_enum_callback &callback) {
   config_get_media_path(path, sizeof(path), "");
 
   _snprintf(buff, sizeof(buff), "%s\\*.map", path);
+  buff[sizeof(buff) - 1] = 0;
 
   WIN32_FIND_DATAA data;
   HANDLE finddata = FindFirstFileA(buff, &data);
@@ -179,6 +180,7 @@ void keyboard_enum_keymap(keymap_enum_callback &callback) {
   if (finddata != INVALID_HANDLE_VALUE) {
     do {
       _snprintf(buff, sizeof(buff), "%s\\%s", path, data.cFileName);
+      buff[sizeof(buff) - 1] = 0;
       callback(buff);
     } while (FindNextFileA(finddata, &data));
   }

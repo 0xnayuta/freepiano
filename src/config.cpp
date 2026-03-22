@@ -170,10 +170,10 @@ static name_t bind_names[] = {
   { "Label",              BIND_TYPE_LABEL },
   { "Color",              BIND_TYPE_COLOR },
 
-  { "¼üÅÌ°´ÏÂ",            BIND_TYPE_KEYDOWN,     FP_LANG_SCHINESE },
-  { "¼üÅÌËÉ¿ª",            BIND_TYPE_KEYUP,       FP_LANG_SCHINESE },
-  { "±êÇ©",                BIND_TYPE_LABEL,       FP_LANG_SCHINESE },
-  { "ÑÕÉ«",                BIND_TYPE_COLOR,       FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½Ì°ï¿½ï¿½ï¿½",            BIND_TYPE_KEYDOWN,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½ï¿½É¿ï¿½",            BIND_TYPE_KEYUP,       FP_LANG_SCHINESE },
+  { "ï¿½ï¿½Ç©",                BIND_TYPE_LABEL,       FP_LANG_SCHINESE },
+  { "ï¿½ï¿½É«",                BIND_TYPE_COLOR,       FP_LANG_SCHINESE },
 
   // for compatibility
   { "Key",                BIND_TYPE_KEYDOWN },
@@ -204,28 +204,28 @@ static name_t action_names[] = {
   { "Sustain",            SM_SUSTAIN },
   { "Modulation",         SM_MODULATION },
 
-  { "Çúµ÷",               SM_KEY_SIGNATURE,       FP_LANG_SCHINESE },
-  { "°Ë¶È",               SM_OCTAVE,              FP_LANG_SCHINESE },
-  { "Á¦¶È",               SM_VELOCITY,            FP_LANG_SCHINESE },
-  { "Í¨µÀ",               SM_CHANNEL,             FP_LANG_SCHINESE },
-  { "ÒÆÎ»",               SM_TRANSPOSE,           FP_LANG_SCHINESE },
-  { "¸úËæÇúµ÷",           SM_FOLLOW_KEY,          FP_LANG_SCHINESE },
-  { "×ÜÒôÁ¿",             SM_VOLUME,              FP_LANG_SCHINESE },
-  { "²¥·Å",               SM_PLAY,                FP_LANG_SCHINESE },
-  { "Â¼ÖÆ",               SM_RECORD,              FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½",               SM_KEY_SIGNATURE,       FP_LANG_SCHINESE },
+  { "ï¿½Ë¶ï¿½",               SM_OCTAVE,              FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½",               SM_VELOCITY,            FP_LANG_SCHINESE },
+  { "Í¨ï¿½ï¿½",               SM_CHANNEL,             FP_LANG_SCHINESE },
+  { "ï¿½ï¿½Î»",               SM_TRANSPOSE,           FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½",           SM_FOLLOW_KEY,          FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½",             SM_VOLUME,              FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½",               SM_PLAY,                FP_LANG_SCHINESE },
+  { "Â¼ï¿½ï¿½",               SM_RECORD,              FP_LANG_SCHINESE },
   { "Í£Ö¹",               SM_STOP,                FP_LANG_SCHINESE },
-  { "·Ö×é",               SM_SETTING_GROUP,       FP_LANG_SCHINESE },
-  { "·Ö×é×ÜÊý",           SM_SETTING_GROUP_COUNT, FP_LANG_SCHINESE },
-  { "Òô·û",               SM_NOTE_ON,             FP_LANG_SCHINESE },
-  { "Ö¹Òô",               SM_NOTE_OFF,            FP_LANG_SCHINESE },
-  { "Òô·ûÁ¦¶È",           SM_NOTE_PRESSURE,       FP_LANG_SCHINESE },
-  { "Í¨µÀÁ¦¶È",           SM_PRESSURE,            FP_LANG_SCHINESE },
-  { "ÍäÒô",               SM_PITCH,               FP_LANG_SCHINESE },
-  { "ÀÖÆ÷",               SM_PROGRAM,             FP_LANG_SCHINESE },
-  { "ÀÖÆ÷×é1",            SM_BANK_MSB,            FP_LANG_SCHINESE },
-  { "ÀÖÆ÷×é2",            SM_BANK_LSB,            FP_LANG_SCHINESE },
-  { "ÑÓÒô",               SM_SUSTAIN,             FP_LANG_SCHINESE },
-  { "²üÒô",               SM_MODULATION,          FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½",               SM_SETTING_GROUP,       FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½",           SM_SETTING_GROUP_COUNT, FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½",               SM_NOTE_ON,             FP_LANG_SCHINESE },
+  { "Ö¹ï¿½ï¿½",               SM_NOTE_OFF,            FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½",           SM_NOTE_PRESSURE,       FP_LANG_SCHINESE },
+  { "Í¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½",           SM_PRESSURE,            FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½",               SM_PITCH,               FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½",               SM_PROGRAM,             FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½1",            SM_BANK_MSB,            FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½2",            SM_BANK_LSB,            FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½",               SM_SUSTAIN,             FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½",               SM_MODULATION,          FP_LANG_SCHINESE },
 
   // pervious names
   { "Octshift",           SM_OCTAVE },
@@ -449,18 +449,18 @@ static name_t value_action_names[] = {
   { "SyncFlip",       0x13 },
   { "SyncPress",      0x14 },
 
-  { "ÉèÖÃÎª",         0x00,      FP_LANG_SCHINESE },
-  { "Ôö¼Ó",           0x01,      FP_LANG_SCHINESE },
-  { "¼õÉÙ",           0x02,      FP_LANG_SCHINESE },
-  { "·´×ª",           0x03,      FP_LANG_SCHINESE },
-  { "Âö³å",           0x04,      FP_LANG_SCHINESE },
-  { "ÉèÖÃÊ®Î»",       0x0a,      FP_LANG_SCHINESE },
-  { "ÉèÖÃ¸öÎ»",       0x0b,      FP_LANG_SCHINESE },
-  { "Í¬²½ÉèÖÃ",       0x10,      FP_LANG_SCHINESE },
-  { "Í¬²½Ôö¼Ó",       0x11,      FP_LANG_SCHINESE },
-  { "Í¬²½¼õÉÙ",       0x12,      FP_LANG_SCHINESE },
-  { "Í¬²½·´×ª",       0x13,      FP_LANG_SCHINESE },
-  { "Í¬²½Âö³å",       0x14,      FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½Îª",         0x00,      FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½",           0x01,      FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½",           0x02,      FP_LANG_SCHINESE },
+  { "ï¿½ï¿½×ª",           0x03,      FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½",           0x04,      FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½Ê®Î»",       0x0a,      FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½Ã¸ï¿½Î»",       0x0b,      FP_LANG_SCHINESE },
+  { "Í¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½",       0x10,      FP_LANG_SCHINESE },
+  { "Í¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½",       0x11,      FP_LANG_SCHINESE },
+  { "Í¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½",       0x12,      FP_LANG_SCHINESE },
+  { "Í¬ï¿½ï¿½ï¿½ï¿½×ª",       0x13,      FP_LANG_SCHINESE },
+  { "Í¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½",       0x14,      FP_LANG_SCHINESE },
 };
 
 static name_t instrument_type_names[] = {
@@ -538,39 +538,39 @@ static name_t channel_names[] = {
   { "Ch_14",     0x0e },
   { "Ch_15",     0x0f },
 
-  { "ÊäÈë_0",     0x00,     FP_LANG_SCHINESE },
-  { "ÊäÈë_1",     0x01,     FP_LANG_SCHINESE },
-  { "ÊäÈë_2",     0x02,     FP_LANG_SCHINESE },
-  { "ÊäÈë_3",     0x03,     FP_LANG_SCHINESE },
-  { "ÊäÈë_4",     0x04,     FP_LANG_SCHINESE },
-  { "ÊäÈë_5",     0x05,     FP_LANG_SCHINESE },
-  { "ÊäÈë_6",     0x06,     FP_LANG_SCHINESE },
-  { "ÊäÈë_7",     0x07,     FP_LANG_SCHINESE },
-  { "ÊäÈë_8",     0x08,     FP_LANG_SCHINESE },
-  { "ÊäÈë_9",     0x09,     FP_LANG_SCHINESE },
-  { "ÊäÈë_10",    0x0a,     FP_LANG_SCHINESE },
-  { "ÊäÈë_11",    0x0b,     FP_LANG_SCHINESE },
-  { "ÊäÈë_12",    0x0c,     FP_LANG_SCHINESE },
-  { "ÊäÈë_13",    0x0d,     FP_LANG_SCHINESE },
-  { "ÊäÈë_14",    0x0e,     FP_LANG_SCHINESE },
-  { "ÊäÈë_15",    0x0f,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½_0",     0x00,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½_1",     0x01,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½_2",     0x02,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½_3",     0x03,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½_4",     0x04,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½_5",     0x05,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½_6",     0x06,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½_7",     0x07,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½_8",     0x08,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½_9",     0x09,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½_10",    0x0a,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½_11",    0x0b,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½_12",    0x0c,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½_13",    0x0d,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½_14",    0x0e,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½ï¿½_15",    0x0f,     FP_LANG_SCHINESE },
 
-  { "Êä³ö_0",     0x10,     FP_LANG_SCHINESE },
-  { "Êä³ö_1",     0x11,     FP_LANG_SCHINESE },
-  { "Êä³ö_2",     0x12,     FP_LANG_SCHINESE },
-  { "Êä³ö_3",     0x13,     FP_LANG_SCHINESE },
-  { "Êä³ö_4",     0x14,     FP_LANG_SCHINESE },
-  { "Êä³ö_5",     0x15,     FP_LANG_SCHINESE },
-  { "Êä³ö_6",     0x16,     FP_LANG_SCHINESE },
-  { "Êä³ö_7",     0x17,     FP_LANG_SCHINESE },
-  { "Êä³ö_8",     0x18,     FP_LANG_SCHINESE },
-  { "Êä³ö_9",     0x19,     FP_LANG_SCHINESE },
-  { "Êä³ö_10",    0x1a,     FP_LANG_SCHINESE },
-  { "Êä³ö_11",    0x1b,     FP_LANG_SCHINESE },
-  { "Êä³ö_12",    0x1c,     FP_LANG_SCHINESE },
-  { "Êä³ö_13",    0x1d,     FP_LANG_SCHINESE },
-  { "Êä³ö_14",    0x1e,     FP_LANG_SCHINESE },
-  { "Êä³ö_15",    0x1f,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½_0",     0x10,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½_1",     0x11,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½_2",     0x12,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½_3",     0x13,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½_4",     0x14,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½_5",     0x15,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½_6",     0x16,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½_7",     0x17,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½_8",     0x18,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½_9",     0x19,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½_10",    0x1a,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½_11",    0x1b,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½_12",    0x1c,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½_13",    0x1d,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½_14",    0x1e,     FP_LANG_SCHINESE },
+  { "ï¿½ï¿½ï¿½_15",    0x1f,     FP_LANG_SCHINESE },
 };
 
 // -----------------------------------------------------------------------------------------
@@ -764,6 +764,7 @@ void config_bind_set_label(byte code, const char *label) {
   thread_lock lock(config_lock);
 
   strncpy(settings[current_setting].key_label[code].text, label ? label : "", sizeof(settings[current_setting].key_label[code].text));
+  settings[current_setting].key_label[code].text[sizeof(settings[current_setting].key_label[code].text) - 1] = 0;
 }
 
 const char* config_bind_get_label(byte code) {
@@ -1665,6 +1666,8 @@ static int print_format(char *buff, int buff_size, const char *format, ...) {
   va_start(args, format);
   int len = _vsnprintf(buff, buff_size, format, args);
   va_end(args);
+  if (buff_size > 0)
+    buff[buff_size - 1] = 0;
   return len;
 }
 
@@ -2270,7 +2273,7 @@ int config_save(const char *filename) {
     return -1;
 
   if (global.instrument_type)
-    fprintf(fp, "instrument type %s\r\n", instrument_type_names[global.instrument_type]);
+    fprintf(fp, "instrument type %s\r\n", instrument_type_names[global.instrument_type].name);
 
   if (global.instrument_path[0])
     fprintf(fp, "instrument path %s\r\n", global.instrument_path);
@@ -2285,7 +2288,7 @@ int config_save(const char *filename) {
     fprintf(fp, "instrument showvsti %d\r\n", global.instrument_show_vsti);
 
   if (global.output_type)
-    fprintf(fp, "output type %s\r\n", output_type_names[global.output_type]);
+    fprintf(fp, "output type %s\r\n", output_type_names[global.output_type].name);
 
   if (global.output_device[0])
     fprintf(fp, "output device %s\r\n", global.output_device);
@@ -2380,6 +2383,7 @@ int config_select_instrument(int type, const char *name) {
     if (result == 0) {
       global.instrument_type = type;
       strncpy(global.instrument_path, name, sizeof(global.instrument_path));
+      global.instrument_path[sizeof(global.instrument_path) - 1] = 0;
     }
   }
   else if (type == INSTRUMENT_TYPE_VSTI) {
@@ -2389,6 +2393,7 @@ int config_select_instrument(int type, const char *name) {
           if (!found) {
             if (_stricmp(PathFindFileName(value), name) == 0) {
               strncpy(name, value, sizeof(name));
+              name[sizeof(name) - 1] = 0;
               found = true;
             }
           }
@@ -2410,6 +2415,7 @@ int config_select_instrument(int type, const char *name) {
         if (result == 0) {
           global.instrument_type = type;
           strncpy(global.instrument_path, name, sizeof(global.instrument_path));
+          global.instrument_path[sizeof(global.instrument_path) - 1] = 0;
         }
       }
     } else {
@@ -2418,6 +2424,7 @@ int config_select_instrument(int type, const char *name) {
       if (result == 0) {
         global.instrument_type = type;
         strncpy(global.instrument_path, name, sizeof(global.instrument_path));
+        global.instrument_path[sizeof(global.instrument_path) - 1] = 0;
       }
     }
   }
@@ -2524,6 +2531,7 @@ int config_select_output(int type, const char *device) {
     global.output_type = type;
     global.output_type_current = auto_selected_type;
     strncpy(global.output_device, device, sizeof(global.output_device));
+    global.output_device[sizeof(global.output_device) - 1] = 0;
   }
 
   return result;
@@ -2655,6 +2663,9 @@ void config_get_media_path(char *buff, int buff_size, const char *path) {
     strncpy(buff, path, buff_size);
   }
 
+  if (buff_size > 0)
+    buff[buff_size - 1] = 0;
+
 }
 
 // get relative path
@@ -2671,6 +2682,9 @@ void config_get_relative_path(char *buff, int buff_size, const char *path) {
       strncpy(buff, path, buff_size);
     }
   }
+
+  if (buff_size > 0)
+    buff[buff_size - 1] = 0;
 }
 
 
@@ -2942,11 +2956,13 @@ void config_set_gui_transparency(byte value) {
   global.gui_transparency = value;
   HWND hwnd = gui_get_window();
 
+  LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+
   if (global.gui_transparency == 255) {
-    SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) & ~WS_EX_LAYERED);
+    SetWindowLongPtr(hwnd, GWL_EXSTYLE, exStyle & ~static_cast<LONG_PTR>(WS_EX_LAYERED));
   }
   else {
-    SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_LAYERED);
+    SetWindowLongPtr(hwnd, GWL_EXSTYLE, exStyle | static_cast<LONG_PTR>(WS_EX_LAYERED));
     SetLayeredWindowAttributes(hwnd, 0, global.gui_transparency, LWA_ALPHA);
   }
 }

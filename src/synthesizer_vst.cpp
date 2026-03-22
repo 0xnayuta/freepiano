@@ -134,14 +134,16 @@ static VstIntPtr VSTCALLBACK HostCallback(AEffect *effect, VstInt32 opcode, VstI
 
    case audioMasterGetVendorString:
      if (ptr) {
-       strcpy((char *)ptr, APP_NAME);
+       strncpy((char *)ptr, APP_NAME, kVstMaxVendorStrLen);
+       ((char *)ptr)[kVstMaxVendorStrLen - 1] = 0;
        return 1;
      }
      break;
 
    case audioMasterGetProductString:
      if (ptr) {
-       strcpy((char *)ptr, APP_NAME);
+       strncpy((char *)ptr, APP_NAME, kVstMaxProductStrLen);
+       ((char *)ptr)[kVstMaxProductStrLen - 1] = 0;
        return 1;
      }
      break;
@@ -585,6 +587,7 @@ void vsti_show_editor(bool show) {
 static void search_plugins(const char *path, vsti_enum_callback &callback) {
   char buffer[256] = {0};
   _snprintf(buffer, sizeof(buffer), "%s\\*.dll", path);
+  buffer[sizeof(buffer) - 1] = 0;
 
   WIN32_FIND_DATAA data;
   HANDLE finddata;
@@ -594,6 +597,7 @@ static void search_plugins(const char *path, vsti_enum_callback &callback) {
   if (finddata != INVALID_HANDLE_VALUE) {
     do {
       _snprintf(buffer, sizeof(buffer), "%s\\%s", path, data.cFileName);
+      buffer[sizeof(buffer) - 1] = 0;
       callback(buffer);
     } while (FindNextFileA(finddata, &data));
   }
@@ -602,6 +606,7 @@ static void search_plugins(const char *path, vsti_enum_callback &callback) {
 
   // serch subdirectoies
   _snprintf(buffer, sizeof(buffer), "%s\\*", path);
+  buffer[sizeof(buffer) - 1] = 0;
   finddata = FindFirstFileA(buffer, &data);
 
   if (finddata != INVALID_HANDLE_VALUE) {
@@ -612,6 +617,7 @@ static void search_plugins(const char *path, vsti_enum_callback &callback) {
           continue;
 
         _snprintf(buffer, sizeof(buffer), "%s\\%s", path, data.cFileName);
+        buffer[sizeof(buffer) - 1] = 0;
         search_plugins(buffer, callback);
       }
     } while (FindNextFileA(finddata, &data));
