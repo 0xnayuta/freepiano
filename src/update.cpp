@@ -65,8 +65,8 @@ void update_check_async() {
 
   status = UPDATE_CHECKING;
 
-  internet = InternetOpen("FreePiano 1.8", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, INTERNET_FLAG_ASYNC);
+  internet = InternetOpenA("FreePiano 1.8", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, INTERNET_FLAG_ASYNC);
   InternetSetStatusCallback(internet, &internet_status_callback);
 
-  InternetOpenUrl(internet, "http://api.freepiano.tiwb.com/check_update", NULL, NULL, NULL, 1);
+  InternetOpenUrlA(internet, "http://api.freepiano.tiwb.com/check_update", NULL, NULL, NULL, 1);
 }

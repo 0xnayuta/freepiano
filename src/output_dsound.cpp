@@ -174,7 +174,7 @@ int dsound_open(const char *name) {
 
     callback.name = name;
     callback.hr = E_FAIL;
-    DirectSoundEnumerate(&enum_callback::func, &callback);
+    DirectSoundEnumerateA(&enum_callback::func, &callback);
 
     // create dsound object
     if (FAILED(hr = callback.hr))

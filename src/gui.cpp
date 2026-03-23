@@ -33,22 +33,22 @@ static void try_open_song(int err) {
   }
 
   switch (err) {
-   case -1: MessageBox(gui_get_window(), lang_load_string(IDS_ERR_OPEN_SONG), APP_NAME, MB_OK); break;
-   case -2: MessageBox(gui_get_window(), lang_load_string(IDS_ERR_OPEN_SONG_VERSION), APP_NAME, MB_OK); break;
-   default: MessageBox(gui_get_window(), lang_load_string(IDS_ERR_OPEN_SONG_FORMAT), APP_NAME, MB_OK); break;
+   case -1: MessageBoxW(gui_get_window(), lang_load_string_w(IDS_ERR_OPEN_SONG), APP_NAME_W, MB_OK); break;
+   case -2: MessageBoxW(gui_get_window(), lang_load_string_w(IDS_ERR_OPEN_SONG_VERSION), APP_NAME_W, MB_OK); break;
+   default: MessageBoxW(gui_get_window(), lang_load_string_w(IDS_ERR_OPEN_SONG_FORMAT), APP_NAME_W, MB_OK); break;
   }
 }
 
 static bool open_dialog(char *buff, size_t size, const char* filters, const char* init_dir = NULL) {
   char dir[260] = {0};
 
-  OPENFILENAME ofn;
+  OPENFILENAMEA ofn;
   memset(&ofn, 0, sizeof(ofn));
   ofn.lStructSize = sizeof(ofn);
   ofn.hwndOwner = gui_get_window();
   ofn.lpstrFile = buff;
   ofn.lpstrFile[0] = 0;
-  ofn.nMaxFile = size;
+  ofn.nMaxFile = static_cast<DWORD>(size);
   ofn.lpstrFilter = filters;
   ofn.nFilterIndex = 1;
   ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
@@ -57,23 +57,23 @@ static bool open_dialog(char *buff, size_t size, const char* filters, const char
 
   if (init_dir) {
     config_get_media_path(dir, sizeof(dir), init_dir);
-    PathRemoveFileSpec(dir);
+    PathRemoveFileSpecA(dir);
     ofn.lpstrInitialDir = dir;
   }
 
-  return GetOpenFileName(&ofn) != 0;
+  return GetOpenFileNameA(&ofn) != 0;
 }
 
 static bool save_dialog(char *buff, size_t size, const char *filters, const char* init_dir = NULL) {
   char dir[260] = {0};
 
-  OPENFILENAME ofn;
+  OPENFILENAMEA ofn;
   memset(&ofn, 0, sizeof(ofn));
   ofn.lStructSize = sizeof(ofn);
   ofn.hwndOwner = gui_get_window();
   ofn.lpstrFile = buff;
   ofn.lpstrFile[0] = 0;
-  ofn.nMaxFile = size;
+  ofn.nMaxFile = static_cast<DWORD>(size);
   ofn.lpstrFilter = filters;
   ofn.nFilterIndex = 1;
   ofn.Flags = OFN_PATHMUSTEXIST;
@@ -82,29 +82,63 @@ static bool save_dialog(char *buff, size_t size, const char *filters, const char
 
   if (init_dir) {
     config_get_media_path(dir, sizeof(dir), init_dir);
-    PathRemoveFileSpec(dir);
+    PathRemoveFileSpecA(dir);
     ofn.lpstrInitialDir = dir;
   }
 
-  return GetSaveFileName(&ofn) != 0;
+  return GetSaveFileNameA(&ofn) != 0;
 }
 
 static BOOL append_menu_text_codepage(HMENU menu, UINT flags, UINT_PTR item_id, const char *text, UINT codepage) {
   if (text == NULL)
-    return AppendMenu(menu, flags, item_id, NULL);
+    return AppendMenuW(menu, flags, item_id, NULL);
 
   wchar_t wide_text[4096];
   int length = MultiByteToWideChar(codepage, 0, text, -1, wide_text, ARRAY_COUNT(wide_text));
   if (length > 0)
     return AppendMenuW(menu, flags, item_id, wide_text);
 
-  return AppendMenu(menu, flags, item_id, text);
+  return AppendMenuA(menu, flags, item_id, text);
+}
+
+static BOOL append_menu_text(HMENU menu, UINT flags, UINT_PTR item_id, const char *text) {
+  return append_menu_text_codepage(menu, flags, item_id, text, CP_ACP);
+}
+
+static BOOL append_menu_text_w(HMENU menu, UINT flags, UINT_PTR item_id, const wchar_t *text) {
+  return AppendMenuW(menu, flags, item_id, text);
 }
 
 static BOOL append_controller_menu_text(HMENU menu, UINT flags, UINT_PTR item_id, const char *text) {
   return append_menu_text_codepage(menu, flags, item_id, text, CP_UTF8);
 }
 
+static BOOL listview_set_item_text_a(HWND list, int item, int subitem, LPSTR text) {
+  LVITEMA lv = {};
+  lv.iSubItem = subitem;
+  lv.pszText = text ? text : const_cast<LPSTR>("");
+  return static_cast<BOOL>(SendMessageA(list, LVM_SETITEMTEXTA, static_cast<WPARAM>(item), reinterpret_cast<LPARAM>(&lv)));
+}
+
+static int listview_insert_item_a(HWND list, LVITEMA *item) {
+  return static_cast<int>(SendMessageA(list, LVM_INSERTITEMA, 0, reinterpret_cast<LPARAM>(item)));
+}
+
+static int listview_insert_column_a(HWND list, int column, LVCOLUMNA *column_info) {
+  return static_cast<int>(SendMessageA(list, LVM_INSERTCOLUMNA, static_cast<WPARAM>(column), reinterpret_cast<LPARAM>(column_info)));
+}
+
+static BOOL listview_get_item_text_a(HWND list, int item, int subitem, LPSTR text, int cchTextMax) {
+  LVITEMA lv = {};
+  lv.iSubItem = subitem;
+  lv.cchTextMax = cchTextMax;
+  lv.pszText = text;
+  return static_cast<BOOL>(SendMessageA(list, LVM_GETITEMTEXTA, static_cast<WPARAM>(item), reinterpret_cast<LPARAM>(&lv)));
+}
+
+static HTREEITEM treeview_insert_item_a(HWND tree, TVINSERTSTRUCTA *item) {
+  return reinterpret_cast<HTREEITEM>(SendMessageA(tree, TVM_INSERTITEMA, 0, reinterpret_cast<LPARAM>(item)));
+}
 
 // Numeric edit control
 #define EN_VALUE_VALID      0xFE01
@@ -137,7 +171,7 @@ static LRESULT CALLBACK NumericEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPA
         if (dwRefData) {
           int value = 0;
           char temp[256];
-          GetWindowText(hWnd, temp, sizeof(temp));
+          GetWindowTextA(hWnd, temp, sizeof(temp));
 
           if (sscanf(temp, (const char*)dwRefData, &value) == 1)
             PostMessage(parent, WM_COMMAND, MAKEWPARAM(id, EN_VALUE_VALID), static_cast<LPARAM>(value));
@@ -157,7 +191,7 @@ static LRESULT CALLBACK NumericEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPA
 
 static void update_numeric_edit(HWND hwnd, int itemid, const char *value, const char* format) {
   HWND edit = GetDlgItem(hwnd, itemid);
-  SetWindowText(edit, value);
+  SetWindowTextA(edit, value);
   SetWindowSubclass(edit, NumericEditProc, 0, reinterpret_cast<DWORD_PTR>(format));
 }
 
@@ -198,7 +232,7 @@ static INT_PTR CALLBACK settings_midi_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
       midi_input_config_t config;
       config_get_midi_input_config(device, &config);
 
-      ListView_SetItemText(list, id, 1, (LPSTR)lang_load_string(config.enable ? IDS_MIDI_INPUT_LIST_ENABLED : IDS_MIDI_INPUT_LIST_DISABLED));
+      listview_set_item_text_a(list, id, 1, (LPSTR)lang_load_string(config.enable ? IDS_MIDI_INPUT_LIST_ENABLED : IDS_MIDI_INPUT_LIST_DISABLED));
 
       if (config.remap == 0) {
         strcpy_s(buff, lang_load_string(IDS_MIDI_INPUT_LIST_REMAP_OUTPUT));
@@ -206,7 +240,7 @@ static INT_PTR CALLBACK settings_midi_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
       else {
         lang_format_string(buff, sizeof(buff), IDS_MIDI_INPUT_LIST_REMAP_INPUT, config.remap - 1);
       }
-      ListView_SetItemText(list, id, 2, (LPSTR)buff);
+      listview_set_item_text_a(list, id, 2, (LPSTR)buff);
     }
 
     static void refresh_midi_inputs(HWND hWnd) {
@@ -214,7 +248,7 @@ static INT_PTR CALLBACK settings_midi_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 
       struct enum_callback : midi_enum_callback {
         void operator () (const char *value) {
-          LVITEM lvI = {0};
+          LVITEMA lvI = {0};
 
           lvI.pszText   = (char*)value;
           lvI.mask      = LVIF_TEXT | LVIF_STATE;
@@ -222,7 +256,7 @@ static INT_PTR CALLBACK settings_midi_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
           lvI.iSubItem  = 0;
           lvI.state     = 0;
           lvI.iItem     = index;
-          ListView_InsertItem(list, &lvI);
+          listview_insert_item_a(list, &lvI);
 
           update_midi_input(list, index, value);
           index ++;
@@ -274,7 +308,7 @@ static INT_PTR CALLBACK settings_midi_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
    case WM_INITDIALOG: {
      lang_localize_dialog(hWnd);
 
-     LVCOLUMN lvc = {0};
+     LVCOLUMNA lvc = {0};
      HWND input_list = GetDlgItem(hWnd, IDC_MIDI_INPUT_LIST);
 
      lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
@@ -283,18 +317,18 @@ static INT_PTR CALLBACK settings_midi_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
      // Device
      lvc.pszText = (LPSTR)lang_load_string(IDS_MIDI_INPUT_LIST_DEVICE);
      lvc.cx = 300;
-     ListView_InsertColumn(input_list, 0, &lvc);
+     listview_insert_column_a(input_list, 0, &lvc);
 
      // Enable.
      lvc.pszText = (LPSTR)lang_load_string(IDS_MIDI_INPUT_LIST_ENABLE);
      lvc.cx = 60;
      lvc.fmt = LVCFMT_CENTER;
-     ListView_InsertColumn(input_list, 2, &lvc);
+     listview_insert_column_a(input_list, 2, &lvc);
 
      // Channel.
      lvc.pszText = (LPSTR)lang_load_string(IDS_MIDI_INPUT_LIST_REMAP);
      lvc.cx = 60;
-     ListView_InsertColumn(input_list, 2, &lvc);
+     listview_insert_column_a(input_list, 2, &lvc);
 
      // Set extended style.
      ListView_SetExtendedListViewStyle(input_list, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
@@ -324,7 +358,7 @@ static INT_PTR CALLBACK settings_midi_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
        int row = ListView_GetNextItem(list, -1, LVNI_FOCUSED);
 
        char device_name[256] = "";
-       ListView_GetItemText(list, row, 0, device_name, sizeof(device_name));
+       listview_get_item_text_a(list, row, 0, device_name, sizeof(device_name));
        midi_input_config_t config;
        config_get_midi_input_config(device_name, &config);
 
@@ -361,8 +395,8 @@ static INT_PTR CALLBACK settings_midi_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
            if (column == 1) {
              menu_midi_input_enable_popup = helpers::create_popup_menu();
 
-             AppendMenu(menu_midi_input_enable_popup,  MF_STRING, static_cast<UINT_PTR>(0), lang_load_string(IDS_MIDI_INPUT_LIST_ENABLED));
-             AppendMenu(menu_midi_input_enable_popup,  MF_STRING, static_cast<UINT_PTR>(0), lang_load_string(IDS_MIDI_INPUT_LIST_DISABLED));
+             append_menu_text(menu_midi_input_enable_popup,  MF_STRING, static_cast<UINT_PTR>(0), lang_load_string(IDS_MIDI_INPUT_LIST_ENABLED));
+             append_menu_text(menu_midi_input_enable_popup,  MF_STRING, static_cast<UINT_PTR>(0), lang_load_string(IDS_MIDI_INPUT_LIST_DISABLED));
 
              helpers::show_popup_menu(menu_midi_input_enable_popup, hWnd);
            }
@@ -370,11 +404,11 @@ static INT_PTR CALLBACK settings_midi_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
            else if (column == 2) {
              menu_midi_input_channel_popup = helpers::create_popup_menu();
 
-             AppendMenu(menu_midi_input_channel_popup,  MF_STRING, static_cast<UINT_PTR>(0), lang_load_string(IDS_MIDI_INPUT_LIST_REMAP_OUTPUT));
+             append_menu_text(menu_midi_input_channel_popup,  MF_STRING, static_cast<UINT_PTR>(0), lang_load_string(IDS_MIDI_INPUT_LIST_REMAP_OUTPUT));
              for (int i = 0; i < 16; i++) {
                char buff[256];
                lang_format_string(buff, sizeof(buff), IDS_MIDI_INPUT_LIST_REMAP_INPUT, i);
-               AppendMenu(menu_midi_input_channel_popup,  MF_STRING, static_cast<UINT_PTR>(0), buff);
+               append_menu_text(menu_midi_input_channel_popup,  MF_STRING, static_cast<UINT_PTR>(0), buff);
              }
 
              helpers::show_popup_menu(menu_midi_input_channel_popup, hWnd);
@@ -495,7 +529,7 @@ static INT_PTR CALLBACK settings_audio_proc(HWND hWnd, UINT uMsg, WPARAM wParam,
        if (HIWORD(wParam) == CBN_SELCHANGE) {
          int result = 1;
          char temp[256];
-         GetDlgItemText(hWnd, IDC_OUTPUT_LIST, temp, sizeof(temp));
+         GetDlgItemTextA(hWnd, IDC_OUTPUT_LIST, temp, sizeof(temp));
 
          for (int i = 0; i < ARRAY_COUNT(output_types); i++) {
            int len = strlen(output_types[i]);
@@ -533,7 +567,7 @@ static INT_PTR CALLBACK settings_audio_proc(HWND hWnd, UINT uMsg, WPARAM wParam,
      else if (LOWORD(wParam) == IDC_PLAYBACK_SPEED) {
        if (HIWORD(wParam) == EN_VALUE_VALID) {
          char temp[64];
-         GetDlgItemText(hWnd, IDC_PLAYBACK_SPEED, temp, sizeof(temp));
+         GetDlgItemTextA(hWnd, IDC_PLAYBACK_SPEED, temp, sizeof(temp));
          song_set_play_speed(atof(temp));
          helpers::refresh_play_speed(hWnd);
        }
@@ -605,11 +639,11 @@ static INT_PTR CALLBACK settings_play_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 
         // input channel label
         lang_format_string(buff, sizeof(buff), IDS_SETTING_PLAY_INPUT, channel);
-        SetDlgItemText(hWnd, IDC_PLAY_IN_1 + id, buff);
+        SetDlgItemTextA(hWnd, IDC_PLAY_IN_1 + id, buff);
 
         // coutput channel label
         lang_format_string(buff, sizeof(buff), IDS_SETTING_PLAY_OUTPUT, config_get_output_channel(channel));
-        SetDlgItemText(hWnd, IDC_PLAY_OUT_1 + id, buff);
+        SetDlgItemTextA(hWnd, IDC_PLAY_OUT_1 + id, buff);
 
         // velocity 
         update_numeric_edit(hWnd, IDC_PLAY_VELOCITY1 + id, config_get_key_velocity(channel));
@@ -730,7 +764,7 @@ static INT_PTR CALLBACK settings_play_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
       {
         if (HIWORD(wParam) == CBN_SELCHANGE) {
           char temp[256];
-          GetDlgItemText(hWnd, IDC_PLAY_OCTAVE1 + id, temp, sizeof(temp));
+          GetDlgItemTextA(hWnd, IDC_PLAY_OCTAVE1 + id, temp, sizeof(temp));
           int value = atoi(temp);
           song_send_event(SM_OCTAVE, channel, SM_VALUE_SET, (char)value, true);
           refresh = true;
@@ -741,7 +775,7 @@ static INT_PTR CALLBACK settings_play_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
       {
         if (HIWORD(wParam) == CBN_SELCHANGE) {
           char temp[256];
-          GetDlgItemText(hWnd, IDC_PLAY_CHANNEL1 + id, temp, sizeof(temp));
+          GetDlgItemTextA(hWnd, IDC_PLAY_CHANNEL1 + id, temp, sizeof(temp));
           int value = atoi(temp);
           song_send_event(SM_CHANNEL, channel, SM_VALUE_SET, value, true);
           refresh = true;
@@ -826,7 +860,7 @@ static INT_PTR CALLBACK settings_keymap_proc(HWND hWnd, UINT uMsg, WPARAM wParam
 
       LockWindowUpdate(edit);
       int scroll = GetScrollPos(edit, SB_VERT);
-      Edit_SetText(edit, buff);
+      SetWindowTextA(edit, buff);
       Edit_Scroll(edit, scroll, 0);
       LockWindowUpdate(NULL);
 
@@ -837,7 +871,7 @@ static INT_PTR CALLBACK settings_keymap_proc(HWND hWnd, UINT uMsg, WPARAM wParam
       uint buff_size = Edit_GetTextLength(edit) + 1;
       char *buff = (char*)malloc(buff_size);
 
-      Edit_GetText(edit, buff, buff_size);
+      GetWindowTextA(edit, buff, buff_size);
       config_parse_keymap(buff);
 
       free(buff);
@@ -1040,7 +1074,7 @@ static void add_setting_page(HWND list, const char *text, int page_id) {
     }
   }
 
-  TVINSERTSTRUCT tvins = {};
+  TVINSERTSTRUCTA tvins = {};
   tvins.item.mask = TVIF_TEXT | TVIF_PARAM;
   tvins.item.pszText = (char *)text;
   tvins.item.cchTextMax = 0;
@@ -1048,7 +1082,7 @@ static void add_setting_page(HWND list, const char *text, int page_id) {
   tvins.hInsertAfter = NULL;
   tvins.hParent = TVI_ROOT;
 
-  setting_pages[page_param].item = TreeView_InsertItem(list, &tvins);
+  setting_pages[page_param].item = treeview_insert_item_a(list, &tvins);
 }
 
 static INT_PTR CALLBACK settings_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -1147,16 +1181,16 @@ static INT_PTR CALLBACK song_info_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
      lang_localize_dialog(hWnd);
 
      song_info_t *info = song_get_info();
-     SetDlgItemText(hWnd, IDC_SONG_TITLE, info->title);
-     SetDlgItemText(hWnd, IDC_SONG_AUTHOR, info->author);
+     SetDlgItemTextA(hWnd, IDC_SONG_TITLE, info->title);
+     SetDlgItemTextA(hWnd, IDC_SONG_AUTHOR, info->author);
 
      if (info->compatibility) {
-       SetDlgItemText(hWnd, IDC_SONG_COMMENT, info->comment);
+       SetDlgItemTextA(hWnd, IDC_SONG_COMMENT, info->comment);
      }
      else {
        char buff[1024];
        sprintf_s(buff, "%s\r\n\r\n%s", lang_load_string(IDS_SONG_INFO_COMPATIBITY), info->comment);
-       SetDlgItemText(hWnd, IDC_SONG_COMMENT, buff);
+       SetDlgItemTextA(hWnd, IDC_SONG_COMMENT, buff);
      }
    }
    break;
@@ -1166,9 +1200,9 @@ static INT_PTR CALLBACK song_info_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
       case IDOK: {
         song_info_t *info = song_get_info();
         if (song_allow_save()) {
-          GetDlgItemText(hWnd, IDC_SONG_TITLE, info->title, sizeof(info->title));
-          GetDlgItemText(hWnd, IDC_SONG_AUTHOR, info->author, sizeof(info->author));
-          GetDlgItemText(hWnd, IDC_SONG_COMMENT, info->comment, sizeof(info->comment));
+          GetDlgItemTextA(hWnd, IDC_SONG_TITLE, info->title, sizeof(info->title));
+          GetDlgItemTextA(hWnd, IDC_SONG_AUTHOR, info->author, sizeof(info->author));
+          GetDlgItemTextA(hWnd, IDC_SONG_COMMENT, info->comment, sizeof(info->comment));
         }
         EndDialog(hWnd, 1);
       }
@@ -1279,54 +1313,54 @@ static int menu_init() {
   SetMenuInfo(menu_main, &menuinfo);
 
   // Main menu
-  AppendMenu(menu_main, MF_POPUP, (UINT_PTR)menu_record, lang_load_string(IDS_MENU_FILE));
-  AppendMenu(menu_main, MF_POPUP, (UINT_PTR)menu_instrument, lang_load_string(IDS_MENU_INSTRUMENT));
-  AppendMenu(menu_main, MF_POPUP, (UINT_PTR)menu_keymap, lang_load_string(IDS_MENU_KEYMAP));
-  AppendMenu(menu_main, MF_POPUP, (UINT_PTR)menu_setting_group, lang_load_string(IDS_MENU_KEYGROUP));
-  AppendMenu(menu_main, MF_POPUP, (UINT_PTR)menu_config, lang_load_string(IDS_MENU_CONFIG));
-  AppendMenu(menu_main, MF_POPUP, (UINT_PTR)menu_about, lang_load_string(IDS_MENU_HELP));
+  append_menu_text_w(menu_main, MF_POPUP, (UINT_PTR)menu_record, lang_load_string_w(IDS_MENU_FILE));
+  append_menu_text_w(menu_main, MF_POPUP, (UINT_PTR)menu_instrument, lang_load_string_w(IDS_MENU_INSTRUMENT));
+  append_menu_text_w(menu_main, MF_POPUP, (UINT_PTR)menu_keymap, lang_load_string_w(IDS_MENU_KEYMAP));
+  append_menu_text_w(menu_main, MF_POPUP, (UINT_PTR)menu_setting_group, lang_load_string_w(IDS_MENU_KEYGROUP));
+  append_menu_text_w(menu_main, MF_POPUP, (UINT_PTR)menu_config, lang_load_string_w(IDS_MENU_CONFIG));
+  append_menu_text_w(menu_main, MF_POPUP, (UINT_PTR)menu_about, lang_load_string_w(IDS_MENU_HELP));
 
   // Record menu
-  AppendMenu(menu_record, MF_STRING, (UINT_PTR)MENU_ID_FILE_OPEN, lang_load_string(IDS_MENU_FILE_OPEN));
-  AppendMenu(menu_record, MF_STRING, (UINT_PTR)MENU_ID_FILE_SAVE, lang_load_string(IDS_MENU_FILE_SAVE));
-  AppendMenu(menu_record, MF_POPUP, (UINT_PTR)menu_export, lang_load_string(IDS_MENU_FILE_EXPORT));
-  AppendMenu(menu_record, MF_SEPARATOR, 0, NULL);
-  AppendMenu(menu_record, MF_STRING, (UINT_PTR)MENU_ID_FILE_RECORD, lang_load_string(IDS_MENU_FILE_RECORD));
-  AppendMenu(menu_record, MF_STRING, (UINT_PTR)MENU_ID_FILE_PLAY, lang_load_string(IDS_MENU_FILE_PLAY));
-  AppendMenu(menu_record, MF_STRING, (UINT_PTR)MENU_ID_FILE_STOP, lang_load_string(IDS_MENU_FILE_STOP));
-  AppendMenu(menu_record, MF_SEPARATOR, 0, NULL);
-  AppendMenu(menu_record, MF_STRING, (UINT_PTR)MENU_ID_FILE_INFO, lang_load_string(IDS_MENU_FILE_INFO));
+  append_menu_text_w(menu_record, MF_STRING, (UINT_PTR)MENU_ID_FILE_OPEN, lang_load_string_w(IDS_MENU_FILE_OPEN));
+  append_menu_text_w(menu_record, MF_STRING, (UINT_PTR)MENU_ID_FILE_SAVE, lang_load_string_w(IDS_MENU_FILE_SAVE));
+  append_menu_text_w(menu_record, MF_POPUP, (UINT_PTR)menu_export, lang_load_string_w(IDS_MENU_FILE_EXPORT));
+  append_menu_text_w(menu_record, MF_SEPARATOR, 0, NULL);
+  append_menu_text_w(menu_record, MF_STRING, (UINT_PTR)MENU_ID_FILE_RECORD, lang_load_string_w(IDS_MENU_FILE_RECORD));
+  append_menu_text_w(menu_record, MF_STRING, (UINT_PTR)MENU_ID_FILE_PLAY, lang_load_string_w(IDS_MENU_FILE_PLAY));
+  append_menu_text_w(menu_record, MF_STRING, (UINT_PTR)MENU_ID_FILE_STOP, lang_load_string_w(IDS_MENU_FILE_STOP));
+  append_menu_text_w(menu_record, MF_SEPARATOR, 0, NULL);
+  append_menu_text_w(menu_record, MF_STRING, (UINT_PTR)MENU_ID_FILE_INFO, lang_load_string_w(IDS_MENU_FILE_INFO));
 
-  AppendMenu(menu_export, MF_STRING, (UINT_PTR)MENU_ID_FILE_EXPORT_MP4, lang_load_string(IDS_MENU_FILE_EXPORT_MP4));
-  AppendMenu(menu_export, MF_STRING, (UINT_PTR)MENU_ID_FILE_EXPORT_WAV, lang_load_string(IDS_MENU_FILE_EXPORT_WAV));
+  append_menu_text_w(menu_export, MF_STRING, (UINT_PTR)MENU_ID_FILE_EXPORT_MP4, lang_load_string_w(IDS_MENU_FILE_EXPORT_MP4));
+  append_menu_text_w(menu_export, MF_STRING, (UINT_PTR)MENU_ID_FILE_EXPORT_WAV, lang_load_string_w(IDS_MENU_FILE_EXPORT_WAV));
 
   // Config menu
-  AppendMenu(menu_config, MF_STRING, (UINT_PTR)MENU_ID_CONFIG_OPTIONS, lang_load_string(IDS_MENU_CONFIG_OPTIONS));
-  AppendMenu(menu_config, MF_POPUP, (UINT_PTR)menu_play_speed, lang_load_string(IDS_MENU_CONFIG_PLAYSPEED));
+  append_menu_text_w(menu_config, MF_STRING, (UINT_PTR)MENU_ID_CONFIG_OPTIONS, lang_load_string_w(IDS_MENU_CONFIG_OPTIONS));
+  append_menu_text_w(menu_config, MF_POPUP, (UINT_PTR)menu_play_speed, lang_load_string_w(IDS_MENU_CONFIG_PLAYSPEED));
 
   // About menu
-  AppendMenu(menu_about, MF_POPUP, (UINT_PTR)menu_language, lang_load_string(IDS_MENU_LANGUAGE));
-  AppendMenu(menu_about, MF_SEPARATOR, 0, NULL);
-  AppendMenu(menu_about, MF_STRING, (UINT_PTR)MENU_ID_HELP_HOMEPAGE, lang_load_string(IDS_MENU_HELP_HOMEPAGE));
-  AppendMenu(menu_about, MF_STRING, (UINT_PTR)MENU_ID_HELP_ONLINE, lang_load_string(IDS_MENU_HELP_ONLINE));
-  AppendMenu(menu_about, MF_SEPARATOR, 0, NULL);
-  AppendMenu(menu_about, MF_STRING, (UINT_PTR)MENU_ID_HELP_ABOUT, lang_load_string(IDS_MENU_HELP_ABOUT));
+  append_menu_text_w(menu_about, MF_POPUP, (UINT_PTR)menu_language, lang_load_string_w(IDS_MENU_LANGUAGE));
+  append_menu_text_w(menu_about, MF_SEPARATOR, 0, NULL);
+  append_menu_text_w(menu_about, MF_STRING, (UINT_PTR)MENU_ID_HELP_HOMEPAGE, lang_load_string_w(IDS_MENU_HELP_HOMEPAGE));
+  append_menu_text_w(menu_about, MF_STRING, (UINT_PTR)MENU_ID_HELP_ONLINE, lang_load_string_w(IDS_MENU_HELP_ONLINE));
+  append_menu_text_w(menu_about, MF_SEPARATOR, 0, NULL);
+  append_menu_text_w(menu_about, MF_STRING, (UINT_PTR)MENU_ID_HELP_ABOUT, lang_load_string_w(IDS_MENU_HELP_ABOUT));
 
   // language menu
-  AppendMenu(menu_language, MF_STRING, MENU_ID_LANGUAGE_ENGLISH, lang_load_string(IDS_MENU_LANGUAGE_ENGLISH));
-  AppendMenu(menu_language, MF_STRING, MENU_ID_LANGUAGE_CHINESE, lang_load_string(IDS_MENU_LANGUAGE_CHINESE));
+  append_menu_text_w(menu_language, MF_STRING, MENU_ID_LANGUAGE_ENGLISH, lang_load_string_w(IDS_MENU_LANGUAGE_ENGLISH));
+  append_menu_text_w(menu_language, MF_STRING, MENU_ID_LANGUAGE_CHINESE, lang_load_string_w(IDS_MENU_LANGUAGE_CHINESE));
 
   // Setting group menu
-  AppendMenu(menu_setting_group, MF_POPUP, (UINT_PTR)menu_setting_group_change, lang_load_string(IDS_MENU_SETTING_GROUP_CHANGE));
-  AppendMenu(menu_setting_group, MF_SEPARATOR, 0, NULL);
-  AppendMenu(menu_setting_group, MF_STRING, MENU_ID_SETTING_GROUP_ADD, lang_load_string(IDS_MENU_SETTING_GROUP_ADD));
-  AppendMenu(menu_setting_group, MF_STRING, MENU_ID_SETTING_GROUP_INSERT, lang_load_string(IDS_MENU_SETTING_GROUP_INSERT));
-  AppendMenu(menu_setting_group, MF_STRING, MENU_ID_SETTING_GROUP_DEL, lang_load_string(IDS_MENU_SETTING_GROUP_DEL));
-  AppendMenu(menu_setting_group, MF_SEPARATOR, 0, NULL);
-  AppendMenu(menu_setting_group, MF_STRING, MENU_ID_SETTING_GROUP_COPY, lang_load_string(IDS_MENU_SETTING_GROUP_COPY));
-  AppendMenu(menu_setting_group, MF_STRING, MENU_ID_SETTING_GROUP_PASTE, lang_load_string(IDS_MENU_SETTING_GROUP_PASTE));
-  AppendMenu(menu_setting_group, MF_STRING, MENU_ID_SETTING_GROUP_CLEAR, lang_load_string(IDS_MENU_SETTING_GROUP_CLEAR));
-  AppendMenu(menu_setting_group, MF_STRING, MENU_ID_SETTING_GROUP_DEFAULT, lang_load_string(IDS_MENU_SETTING_GROUP_DEFAULT));
+  append_menu_text_w(menu_setting_group, MF_POPUP, (UINT_PTR)menu_setting_group_change, lang_load_string_w(IDS_MENU_SETTING_GROUP_CHANGE));
+  append_menu_text_w(menu_setting_group, MF_SEPARATOR, 0, NULL);
+  append_menu_text_w(menu_setting_group, MF_STRING, MENU_ID_SETTING_GROUP_ADD, lang_load_string_w(IDS_MENU_SETTING_GROUP_ADD));
+  append_menu_text_w(menu_setting_group, MF_STRING, MENU_ID_SETTING_GROUP_INSERT, lang_load_string_w(IDS_MENU_SETTING_GROUP_INSERT));
+  append_menu_text_w(menu_setting_group, MF_STRING, MENU_ID_SETTING_GROUP_DEL, lang_load_string_w(IDS_MENU_SETTING_GROUP_DEL));
+  append_menu_text_w(menu_setting_group, MF_SEPARATOR, 0, NULL);
+  append_menu_text_w(menu_setting_group, MF_STRING, MENU_ID_SETTING_GROUP_COPY, lang_load_string_w(IDS_MENU_SETTING_GROUP_COPY));
+  append_menu_text_w(menu_setting_group, MF_STRING, MENU_ID_SETTING_GROUP_PASTE, lang_load_string_w(IDS_MENU_SETTING_GROUP_PASTE));
+  append_menu_text_w(menu_setting_group, MF_STRING, MENU_ID_SETTING_GROUP_CLEAR, lang_load_string_w(IDS_MENU_SETTING_GROUP_CLEAR));
+  append_menu_text_w(menu_setting_group, MF_STRING, MENU_ID_SETTING_GROUP_DEFAULT, lang_load_string_w(IDS_MENU_SETTING_GROUP_DEFAULT));
 
   return 0;
 }
@@ -1385,7 +1419,7 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
      break;
 
    case MENU_ID_INSTRUMENT_MIDI:
-     if (GetMenuString(menu, pos, buff, sizeof(buff), MF_BYPOSITION)) {
+     if (GetMenuStringA(menu, pos, buff, sizeof(buff), MF_BYPOSITION)) {
        char *type_str = strchr(buff, '\t');
        if (type_str) *type_str = '\0';
 
@@ -1398,7 +1432,7 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
      break;
 
    case MENU_ID_VST_PLUGIN:
-     if (GetMenuString(menu, pos, buff, sizeof(buff), MF_BYPOSITION)) {
+     if (GetMenuStringA(menu, pos, buff, sizeof(buff), MF_BYPOSITION)) {
        char *type_str = strchr(buff, '\t');
        if (type_str) *type_str = '\0';
 
@@ -1415,7 +1449,7 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
      break;
 
    case MENU_ID_KEY_MAP:
-     if (GetMenuString(menu, pos, buff, sizeof(buff), MF_BYPOSITION)) {
+     if (GetMenuStringA(menu, pos, buff, sizeof(buff), MF_BYPOSITION)) {
        if (int err = config_set_keymap(buff)) {
          char buff[256];
          lang_format_string(buff, sizeof(buff), IDS_ERR_LOAD_KEYMAP, err);
@@ -1425,11 +1459,11 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
      break;
 
    case MENU_ID_HELP_HOMEPAGE:
-     ShellExecute(NULL, "open", "http://freepiano.tiwb.com", NULL, NULL, 0);
+     ShellExecuteW(NULL, L"open", L"http://freepiano.tiwb.com", NULL, NULL, 0);
      break;
 
    case MENU_ID_HELP_ONLINE:
-     ShellExecute(NULL, "open", "http://freepiano.tiwb.com/category/help", NULL, NULL, 0);
+     ShellExecuteW(NULL, L"open", L"http://freepiano.tiwb.com/category/help", NULL, NULL, 0);
      break;
 
    case MENU_ID_HELP_ABOUT:
@@ -1448,7 +1482,7 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
      char temp[260];
      if (open_dialog(temp, sizeof(temp), lang_load_string(IDS_OPEN_FILTER_SONG), "song\\")) {
        int result = -1;
-       const char *extension = PathFindExtension(temp);
+       const char *extension = PathFindExtensionA(temp);
 
        song_close();
 
@@ -1467,11 +1501,11 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
      if (result) {
        char temp[260];
        if (save_dialog(temp, sizeof(temp), lang_load_string(IDS_SAVE_FILTER_SONG), "song\\")) {
-         PathRenameExtension(temp, ".fpm");
+         PathRenameExtensionA(temp, ".fpm");
          int result = song_save(temp);
 
          if (result != 0) {
-           MessageBox(gui_get_window(), lang_load_string(IDS_ERR_SAVE_SONG), APP_NAME, MB_OK);
+           MessageBoxW(gui_get_window(), lang_load_string_w(IDS_ERR_SAVE_SONG), APP_NAME_W, MB_OK);
          }
        }
      }
@@ -1496,7 +1530,7 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
      break;
 
    case MENU_ID_PLAY_SPEED:
-     if (GetMenuString(menu, pos, buff, sizeof(buff), MF_BYPOSITION)) {
+     if (GetMenuStringA(menu, pos, buff, sizeof(buff), MF_BYPOSITION)) {
        double speed = atof(buff);
        if (speed <= 0) speed = 1;
        song_set_play_speed(speed);
@@ -1518,7 +1552,7 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
      if (id == MENU_ID_KEY_MAP_SAVEAS) {
        if (save_dialog(temp, sizeof(temp), lang_load_string(IDS_FILTER_MAP), config_get_keymap())) {
-         PathRenameExtension(temp, ".map");
+         PathRenameExtensionA(temp, ".map");
        }
      }
      else {
@@ -1542,7 +1576,7 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
    break;
 
    case MENU_ID_SETTING_GROUP_CHANGE:
-     if (GetMenuString(menu, pos, buff, sizeof(buff), MF_BYPOSITION))
+     if (GetMenuStringA(menu, pos, buff, sizeof(buff), MF_BYPOSITION))
        song_send_event(SM_SETTING_GROUP, 0, atoi(buff), 0, true);
      break;
 
@@ -1580,7 +1614,7 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
      char temp[260] = {0};
      if (save_dialog(temp, sizeof(temp), lang_load_string(IDS_SAVE_FILTER_MP4))) {
-       PathRenameExtension(temp, ".mp4");
+       PathRenameExtensionA(temp, ".mp4");
        export_mp4(temp);
      }
    }
@@ -1591,7 +1625,7 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
      char temp[260] = {0};
      if (save_dialog(temp, sizeof(temp), lang_load_string(IDS_SAVE_FILTER_WAV))) {
-       PathRenameExtension(temp, ".wav");
+       PathRenameExtensionA(temp, ".wav");
        export_wav(temp);
      }
    }
@@ -1624,7 +1658,7 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
           }
 
           strcat_s(buffer, "\tMIDI");
-          AppendMenu(menu_instrument, MF_STRING | (selected ? MF_CHECKED : 0), static_cast<UINT_PTR>(MENU_ID_INSTRUMENT_MIDI), buffer);
+          append_menu_text(menu_instrument, MF_STRING | (selected ? MF_CHECKED : 0), static_cast<UINT_PTR>(MENU_ID_INSTRUMENT_MIDI), buffer);
         }
 
         enum_midi_callback() {
@@ -1641,11 +1675,11 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
           char buffer[256];
 
           if (only_filename) {
-            const char *start = PathFindFileName(value);
+            const char *start = PathFindFileNameA(value);
             if (start) {
               strncpy(buffer, start, sizeof(buffer));
               buffer[sizeof(buffer) - 1] = 0;
-              PathRemoveExtension(buffer);
+              PathRemoveExtensionA(buffer);
             } else {
               strcpy_s(buffer, value);
             }
@@ -1662,7 +1696,7 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
           }
 
           strcat_s(buffer, "\tVSTi");
-          AppendMenu(menu_instrument, MF_STRING | (selected ? MF_CHECKED : 0), static_cast<UINT_PTR>(MENU_ID_VST_PLUGIN), buffer);
+          append_menu_text(menu_instrument, MF_STRING | (selected ? MF_CHECKED : 0), static_cast<UINT_PTR>(MENU_ID_VST_PLUGIN), buffer);
         }
 
         enum_vsti_callback() {
@@ -1679,13 +1713,13 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         RemoveMenu(menu, count - 1, MF_BYPOSITION);
 
       // Load vsti plugin menu
-      AppendMenu(menu_instrument, MF_STRING,
+      append_menu_text(menu_instrument, MF_STRING,
         (UINT_PTR)MENU_ID_INSTRUMENT_VSTI_BROWSE, lang_load_string(IDS_MENU_INSTRUMENT_BROWSE));
 
-      AppendMenu(menu_instrument, MF_STRING | (vsti_is_show_editor() ? MF_CHECKED : 0),
+      append_menu_text(menu_instrument, MF_STRING | (vsti_is_show_editor() ? MF_CHECKED : 0),
         (UINT_PTR)MENU_ID_INSTRUMENT_VSTI_EIDOTR, lang_load_string(IDS_MENU_INSTRUMENT_GUI));
 
-      AppendMenu(menu_instrument, MF_SEPARATOR, 0, NULL);
+      append_menu_text(menu_instrument, MF_SEPARATOR, 0, NULL);
 
       enum_midi_callback midi_cb;
       if (config_get_instrument_show_midi()) {
@@ -1706,9 +1740,9 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     else if (menu == menu_keymap) {
       struct enum_callback : keymap_enum_callback {
         void operator () (const char *value) {
-          const char *filename = PathFindFileName(value);
+          const char *filename = PathFindFileNameA(value);
           bool checked = _stricmp(filename, config_get_keymap()) == 0;
-          AppendMenu(menu, MF_STRING | (checked ? MF_CHECKED : 0), MENU_ID_KEY_MAP, filename);
+          append_menu_text(menu, MF_STRING | (checked ? MF_CHECKED : 0), MENU_ID_KEY_MAP, filename);
           found |= checked;
         };
 
@@ -1723,10 +1757,10 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
       uint enable_save = config_get_keymap()[0] ? MF_ENABLED : MF_DISABLED;
 
       // append action menus
-      AppendMenu(menu, MF_STRING | enable_save, MENU_ID_KEY_MAP_SAVE,   lang_load_string(IDS_MENU_KEYMAP_SAVE));
-      AppendMenu(menu, MF_STRING, MENU_ID_KEY_MAP_LOAD,   lang_load_string(IDS_MENU_KEYMAP_LOAD));
-      AppendMenu(menu, MF_STRING, MENU_ID_KEY_MAP_SAVEAS, lang_load_string(IDS_MENU_KEYMAP_SAVEAS));
-      AppendMenu(menu, MF_SEPARATOR, 0, NULL);
+      append_menu_text(menu, MF_STRING | enable_save, MENU_ID_KEY_MAP_SAVE,   lang_load_string(IDS_MENU_KEYMAP_SAVE));
+      append_menu_text(menu, MF_STRING, MENU_ID_KEY_MAP_LOAD,   lang_load_string(IDS_MENU_KEYMAP_LOAD));
+      append_menu_text(menu, MF_STRING, MENU_ID_KEY_MAP_SAVEAS, lang_load_string(IDS_MENU_KEYMAP_SAVEAS));
+      append_menu_text(menu, MF_SEPARATOR, 0, NULL);
 
       // enum key maps.
       enum_callback cb;
@@ -1735,7 +1769,7 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
       keyboard_enum_keymap(cb);
 
       if (!cb.found)
-        AppendMenu(menu, MF_STRING | MF_CHECKED, MENU_ID_KEY_MAP, config_get_keymap());
+        append_menu_text(menu, MF_STRING | MF_CHECKED, MENU_ID_KEY_MAP, config_get_keymap());
     }
     else if (menu == menu_record) {
       EnableMenuItem(menu, MENU_ID_FILE_SAVE, MF_BYCOMMAND | (song_allow_save() ? MF_ENABLED : MF_DISABLED));
@@ -1761,7 +1795,7 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         RemoveMenu(menu, count - 1, MF_BYPOSITION);
 
       for (int i = 0; i < ARRAY_COUNT(speeds); i++)
-        AppendMenu(menu, MF_STRING | (song_get_play_speed() == atof(speeds[i]) ? MF_CHECKED : 0), MENU_ID_PLAY_SPEED, speeds[i]);
+        append_menu_text(menu, MF_STRING | (song_get_play_speed() == atof(speeds[i]) ? MF_CHECKED : 0), MENU_ID_PLAY_SPEED, speeds[i]);
     }
     else if (menu == menu_setting_group_change) {
       // remove all menu items.
@@ -1774,7 +1808,7 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         char buff[256];
         _snprintf(buff, sizeof(buff), "%d", i);
         buff[sizeof(buff) - 1] = 0;
-        AppendMenu(menu, MF_STRING | (config_get_setting_group() == i ? MF_CHECKED : 0), MENU_ID_SETTING_GROUP_CHANGE, buff);
+        append_menu_text(menu, MF_STRING | (config_get_setting_group() == i ? MF_CHECKED : 0), MENU_ID_SETTING_GROUP_CHANGE, buff);
       }
     }
 
@@ -1839,15 +1873,15 @@ static INT_PTR CALLBACK key_setting_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
         HWND edit = GetDlgItem(hWnd, IDC_KEY_SCRIPT);
         uint tabstops = 46;
         Edit_SetTabStops(edit, 1, &tabstops);
-        Edit_SetText(edit, buff);
+        SetWindowTextA(edit, buff);
         Edit_SetSel(edit, -2, -1);
         free(buff);
       }
 
       // caption
-      char temp[256];
-      lang_format_string(temp, sizeof(temp), IDS_KEYSETTING_CAPTION, config_get_key_name(selected_key));
-      SetWindowText(hWnd, temp);
+      wchar_t temp[256];
+      lang_format_string_w(temp, sizeof(temp) / sizeof(temp[0]), IDS_KEYSETTING_CAPTION, config_get_key_name(selected_key));
+      SetWindowTextW(hWnd, temp);
 
       // select script edit control
       SetFocus(GetDlgItem(hWnd, IDC_KEY_SCRIPT));
@@ -1893,23 +1927,23 @@ static INT_PTR CALLBACK key_setting_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
      switch (config_get_note_display()) {
      case NOTE_DISPLAY_DOH:
        for (int i = 0; i < 12; i++)
-         SetDlgItemText(hWnd, IDC_KEY_SETTING_NOTE_1 + i, note_display_doh[i]);
+         SetDlgItemTextA(hWnd, IDC_KEY_SETTING_NOTE_1 + i, note_display_doh[i]);
        for (int i = 0; i < 9; i++)
-         SetDlgItemText(hWnd, IDC_KEY_SETTING_OCTAVE_0 + i, note_octave_doh[i]);
+         SetDlgItemTextA(hWnd, IDC_KEY_SETTING_OCTAVE_0 + i, note_octave_doh[i]);
        break;
 
      case NOTE_DIAPLAY_FIXED_DOH:
        for (int i = 0; i < 12; i++)
-         SetDlgItemText(hWnd, IDC_KEY_SETTING_NOTE_1 + i, note_display_doh[(i + config_get_key_signature()) % 12]);
+         SetDlgItemTextA(hWnd, IDC_KEY_SETTING_NOTE_1 + i, note_display_doh[(i + config_get_key_signature()) % 12]);
        for (int i = 0; i < 9; i++)
-         SetDlgItemText(hWnd, IDC_KEY_SETTING_OCTAVE_0 + i, note_octave_doh[i]);
+         SetDlgItemTextA(hWnd, IDC_KEY_SETTING_OCTAVE_0 + i, note_octave_doh[i]);
        break;
 
      case NOTE_DISPLAY_NAME:
        for (int i = 0; i < 12; i++)
-         SetDlgItemText(hWnd, IDC_KEY_SETTING_NOTE_1 + i, note_display_name[(i + config_get_key_signature()) % 12]);
+         SetDlgItemTextA(hWnd, IDC_KEY_SETTING_NOTE_1 + i, note_display_name[(i + config_get_key_signature()) % 12]);
        for (int i = 0; i < 9; i++)
-         SetDlgItemText(hWnd, IDC_KEY_SETTING_OCTAVE_0 + i, note_octave_name[i]);
+         SetDlgItemTextA(hWnd, IDC_KEY_SETTING_OCTAVE_0 + i, note_octave_name[i]);
        break;
      }
 
@@ -2022,7 +2056,7 @@ static INT_PTR CALLBACK key_setting_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
          HWND edit = GetDlgItem(hWnd, IDC_KEY_SCRIPT);
          uint buff_size = Edit_GetTextLength(edit) + 1;
          char *buff = (char*)malloc(buff_size);
-         Edit_GetText(edit, buff, buff_size);
+         GetWindowTextA(edit, buff, buff_size);
          config_parse_keymap(buff, selected_key, -1);
          free(buff);
 
@@ -2148,14 +2182,14 @@ static void notify_new_upate(uint version) {
 
   if (version > APP_VERSION)
   if (version > config_get_update_version()) {
-    char content[1024];
+    wchar_t content[1024];
     char version_str[32];
     print_version(version_str, sizeof(version_str), version, "");
-    lang_format_string(content, sizeof(content), IDS_NOTIFY_UPDATE, version_str);
+    lang_format_string_w(content, sizeof(content) / sizeof(content[0]), IDS_NOTIFY_UPDATE, version_str);
 
-    int result = ::MessageBox(gui_get_window(), content, lang_load_string(IDS_NOTIFY_UPDATE_TITLE), MB_YESNO);
+    int result = ::MessageBoxW(gui_get_window(), content, lang_load_string_w(IDS_NOTIFY_UPDATE_TITLE), MB_YESNO);
     if (result == IDYES) {
-      ShellExecute(NULL, "open", "http://freepiano.tiwb.com", NULL, NULL, 0);
+      ShellExecuteW(NULL, L"open", L"http://freepiano.tiwb.com", NULL, NULL, 0);
     }
 
     config_set_update_version(version);
@@ -2265,10 +2299,10 @@ static LRESULT CALLBACK windowproc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
    case WM_DROPFILES: {
      HDROP drop = (HDROP)wParam;
      char filepath[MAX_PATH];
-     int len = DragQueryFile(drop, 0, filepath, sizeof(filepath));
+     int len = DragQueryFileA(drop, 0, filepath, sizeof(filepath));
 
      if (len > 0) {
-       const char *extension = PathFindExtension(filepath);
+       const char *extension = PathFindExtensionA(filepath);
 
        // drop a music file
        if (_stricmp(extension, ".lyt") == 0) {
@@ -2318,7 +2352,7 @@ int gui_init() {
   HINSTANCE hInstance = GetModuleHandle(NULL);
 
   // register window class
-  WNDCLASSEX wc = { sizeof(wc), 0 };
+  WNDCLASSEXW wc = { sizeof(wc), 0 };
   wc.style = CS_DBLCLKS;
   wc.lpfnWndProc = &windowproc;
   wc.cbClsExtra = 0;
@@ -2328,10 +2362,10 @@ int gui_init() {
   wc.hCursor = LoadCursor(NULL, IDC_ARROW);
   wc.hbrBackground = NULL;
   wc.lpszMenuName = NULL;
-  wc.lpszClassName = "FreePianoMainWindow";
+  wc.lpszClassName = L"FreePianoMainWindow";
   wc.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON_SMALL));
 
-  RegisterClassEx(&wc);
+  RegisterClassExW(&wc);
 
   // create main menu
   menu_main = CreateMenu();
@@ -2350,7 +2384,7 @@ int gui_init() {
   AdjustWindowRect(&rect, style, FALSE);
 
   // create window
-  mainhwnd = CreateWindow("FreePianoMainWindow", APP_NAME, style,
+  mainhwnd = CreateWindowW(L"FreePianoMainWindow", APP_NAME_W, style,
                           rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
                           NULL, NULL, hInstance, NULL);
 #else
@@ -2365,7 +2399,7 @@ int gui_init() {
   AdjustWindowRect(&rect, style, TRUE);
 
   // create window
-  mainhwnd = CreateWindow("FreePianoMainWindow", APP_NAME, style,
+  mainhwnd = CreateWindowW(L"FreePianoMainWindow", APP_NAME_W, style,
                           rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
                           NULL, menu_main, hInstance, NULL);
 #endif

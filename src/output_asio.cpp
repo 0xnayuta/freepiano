@@ -11,6 +11,7 @@
 #include "song.h"
 #include "config.h"
 #include "export.h"
+#include <tchar.h>
 
 static IASIO *driver = NULL;
 static int driver_index = -1;
@@ -97,8 +98,14 @@ static int open_driver(const char *name) {
   driver_name[0] = 0;
   return -1;
 #endif
-  extern bool loadAsioDriver(const char *name);
+  extern bool loadAsioDriver(const TCHAR *name);
+#ifdef UNICODE
+  wchar_t wide_name[64] = {0};
+  MultiByteToWideChar(CP_ACP, 0, name ? name : "", -1, wide_name, ARRAY_COUNT(wide_name));
+  return !loadAsioDriver(wide_name);
+#else
   return !loadAsioDriver(name);
+#endif
 }
 
 static int create_asio_buffers() {
@@ -479,7 +486,13 @@ void asio_enum_device(asio_enum_callback &callback) {
 
   for (int i = 0; i < driver_list.numdrv; i++) {
     if (drv) {
+#ifdef UNICODE
+      char name[MAXDRVNAMELEN * 4] = {0};
+      WideCharToMultiByte(CP_ACP, 0, drv->drvname, -1, name, sizeof(name), NULL, NULL);
+      callback(name);
+#else
       callback(drv->drvname);
+#endif
       drv = drv->next;
     }
   }

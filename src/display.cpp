@@ -591,7 +591,7 @@ static int font_initialize() {
   // get font path
   char font_path[MAX_PATH];
   char buffer[MAX_PATH];
-  SHGetFolderPath(NULL, CSIDL_FONTS, NULL, SHGFP_TYPE_CURRENT,  font_path);
+  SHGetFolderPathA(NULL, CSIDL_FONTS, NULL, SHGFP_TYPE_CURRENT,  font_path);
 
   // default fonts
   static const char *fonts[] = { "arial.ttf", "simhei.ttf" };
@@ -602,7 +602,7 @@ static int font_initialize() {
     _snprintf(buffer, sizeof(buffer), "%s\\%s", font_path, fonts[i]);
     buffer[sizeof(buffer) - 1] = 0;
 
-    if (PathFileExists(buffer)) {
+    if (PathFileExistsA(buffer)) {
       if (0 == FT_New_Face(font_library, buffer, 0, &font_list[font_count])) {
         if (++font_count == ARRAY_COUNT(font_list))
           break;
@@ -775,7 +775,7 @@ static LPDIRECT3DTEXTURE9 load_png_from_resource(const char *name) {
 
     bool open(const char *name, const char *type) {
       // find resource
-      HRSRC hrsrc = FindResource(0, name, "BINARY");
+      HRSRC hrsrc = FindResourceA(0, name, "BINARY");
       if (hrsrc == 0)
         return false;
 
@@ -945,7 +945,7 @@ static int load_tga_from_resource(const char *name, LPDIRECT3DTEXTURE9 *texture)
   HRESULT hr;
 
   // find resource
-  HRSRC hrsrc = FindResource(0, name, "BINARY");
+  HRSRC hrsrc = FindResourceA(0, name, "BINARY");
   if (hrsrc == 0)
     return E_FAIL;
 
@@ -1415,7 +1415,7 @@ void display_default_skin() {
 #endif
 
     if (resources[i].texture == NULL)
-      resources[i].texture = load_png_from_resource(MAKEINTRESOURCE(IDR_SKIN_RES0) + i);
+      resources[i].texture = load_png_from_resource(MAKEINTRESOURCEA(IDR_SKIN_RES0) + i);
   }
 
 }
@@ -2292,7 +2292,7 @@ static void display_update() {
 #ifdef _DEBUG
       char buff[256];
       sprintf_s(buff, APP_NAME" FPS: %d\n", FPS);
-      SetWindowText(gui_get_window(), buff);
+      SetWindowTextA(gui_get_window(), buff);
 #endif
     }
   }

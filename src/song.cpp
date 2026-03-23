@@ -1546,9 +1546,9 @@ int song_save(const char *filename) {
       // instrument
       {
         char buff[256];
-        strncpy(buff, PathFindFileName(config_get_instrument_path()), sizeof(buff));
+        strncpy(buff, PathFindFileNameA(config_get_instrument_path()), sizeof(buff));
         buff[sizeof(buff) - 1] = 0;
-        PathRenameExtension(buff, "");
+        PathRenameExtensionA(buff, "");
         write_string(buff, fp);
       }
 

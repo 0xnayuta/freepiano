@@ -272,7 +272,7 @@ int vsti_load_plugin(const char *path) {
   typedef AEffect * (*PluginEntryProc)(audioMasterCallback audioMaster);
 
   // load library
-  module = LoadLibrary(path);
+  module = LoadLibraryA(path);
 
   if (module == NULL)
     return -1;
@@ -498,7 +498,7 @@ static HWND create_effect_window(AEffect *effect) {
 
   if (!initialized) {
     // register window class
-    WNDCLASSEX wc = { sizeof(wc), 0 };
+    WNDCLASSEXA wc = { sizeof(wc), 0 };
     wc.style = CS_DBLCLKS;
     wc.lpfnWndProc = &vst_editor_wndproc;
     wc.cbClsExtra = 0;
@@ -511,7 +511,7 @@ static HWND create_effect_window(AEffect *effect) {
     wc.lpszClassName = "FreePianoVstEffect";
     wc.hIconSm = NULL;
 
-    RegisterClassEx(&wc);
+    RegisterClassExA(&wc);
 
     initialized = true;
   }
@@ -520,7 +520,7 @@ static HWND create_effect_window(AEffect *effect) {
   effect->dispatcher(effect, effGetEffectName, 0, 0, effectName, 0);
 
   // create window
-  HWND hwnd = CreateWindow("FreePianoVstEffect", effectName, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, NULL, NULL, GetModuleHandle(NULL), NULL);
+  HWND hwnd = CreateWindowA("FreePianoVstEffect", effectName, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, NULL, NULL, GetModuleHandle(NULL), NULL);
 
   if (hwnd) {
     SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(effect));
@@ -634,8 +634,8 @@ void vsti_enum_plugins(vsti_enum_callback &callback) {
   config_get_media_path(buff, sizeof(buff), "");
   search_plugins(buff, callback);
 
-  if (ERROR_SUCCESS == RegOpenKeyEx(key, "SOFTWARE", 0, KEY_READ, &key) &&
-      ERROR_SUCCESS == RegOpenKeyEx(key, "VST", 0, KEY_READ, &key)) {
+  if (ERROR_SUCCESS == RegOpenKeyExA(key, "SOFTWARE", 0, KEY_READ, &key) &&
+      ERROR_SUCCESS == RegOpenKeyExA(key, "VST", 0, KEY_READ, &key)) {
     char buffer[256] = {0};
     DWORD size = sizeof(buffer);
 

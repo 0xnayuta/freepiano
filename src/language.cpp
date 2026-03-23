@@ -6,6 +6,7 @@
 
 static int lang_current;
 static const char* string_names[FP_IDS_COUNT];
+static const wchar_t* string_names_w[FP_IDS_COUNT];
 static const char* string_table[FP_LANG_COUNT][FP_IDS_COUNT];
 static const wchar_t* string_table_w[FP_LANG_COUNT][FP_IDS_COUNT];
 static std::vector<char*> localized_strings;
@@ -89,10 +90,11 @@ void lang_init() {
       string_table[lang][id] = "";
       string_table_w[lang][id] = L"";
       string_names[id] = "";
+      string_names_w[id] = L"";
     }
   }
 
-#define STR_ENGLISH(id, str) string_table[FP_LANG_ENGLISH][id] = utf8_to_local(str); string_table_w[FP_LANG_ENGLISH][id] = utf8_to_wide_owned(str); string_names[id] = #id;
+#define STR_ENGLISH(id, str) string_table[FP_LANG_ENGLISH][id] = utf8_to_local(str); string_table_w[FP_LANG_ENGLISH][id] = utf8_to_wide_owned(str); string_names[id] = #id; string_names_w[id] = utf8_to_wide_owned(#id);
 #define STR_SCHINESE(id, str) string_table[FP_LANG_SCHINESE][id] = utf8_to_local(str); string_table_w[FP_LANG_SCHINESE][id] = utf8_to_wide_owned(str);
 #include "language_strdef.h"
 #undef STR_ENGLISH
@@ -154,7 +156,7 @@ const char* * lang_load_string_array(uint uid) {
   static char temp[1024];
   static char *arr[256];
   const uint temp_size = sizeof(temp) / sizeof(temp[0]);
-  uint len = LoadString(GetModuleHandle(NULL), uid, temp,  temp_size - 1);
+  uint len = LoadStringA(GetModuleHandle(NULL), uid, temp,  temp_size - 1);
   temp[len < temp_size ? len : 0] = 0;
 
   arr[0] = temp;
@@ -210,10 +212,10 @@ int lang_text_open(uint textid) {
   lang_text_close();
 
   HINSTANCE module = GetModuleHandle(NULL);
-  HRSRC hrsrc = FindResourceEx(module, "TEXT", MAKEINTRESOURCE(textid), system_language(lang_current));
+  HRSRC hrsrc = FindResourceExA(module, "TEXT", MAKEINTRESOURCEA(textid), system_language(lang_current));
 
   if (hrsrc == NULL)
-    hrsrc = FindResourceEx(module, "TEXT", MAKEINTRESOURCE(textid), MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL));
+    hrsrc = FindResourceExA(module, "TEXT", MAKEINTRESOURCEA(textid), MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL));
 
   if (hrsrc) {
     // load resource
@@ -307,19 +309,19 @@ const wchar_t * lang_get_last_error_w() {
 }
 
 
-static void set_window_text_localized(HWND hwnd, const char *text) {
-  SetWindowText(hwnd, text);
+static void set_window_text_localized(HWND hwnd, const wchar_t *text) {
+  SetWindowTextW(hwnd, text);
 }
 
 static BOOL CALLBACK localize_hwnd(HWND hwnd, LPARAM lParam) {
-  char className[256];
-  char text[32];
-  GetClassName(hwnd, className, ARRAYSIZE(className));
-  GetWindowText(hwnd, text, ARRAYSIZE(text));
+  wchar_t className[256];
+  wchar_t text[64];
+  GetClassNameW(hwnd, className, ARRAYSIZE(className));
+  GetWindowTextW(hwnd, text, ARRAYSIZE(text));
 
   for (int i = 1; i < FP_IDS_COUNT; i++) {
-    if (strcmp(text, string_names[i]) == 0) {
-      set_window_text_localized(hwnd, lang_load_string(i));
+    if (wcscmp(text, string_names_w[i]) == 0) {
+      set_window_text_localized(hwnd, lang_load_string_w(i));
       return TRUE;
     }
   }

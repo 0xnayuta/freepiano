@@ -753,6 +753,9 @@ static uint map_language = FP_LANG_ENGLISH;
 static uint map_version = 0;
 static const uint map_current_version = APP_VERSION;
 
+static bool match_word(char **str, const char *match);
+static bool match_line(char **str, char *buff, uint size);
+
 int config_get_ui_language() {
   thread_lock lock(config_lock);
   return lang_from_code(global.ui_language);
@@ -2497,11 +2500,11 @@ int config_select_instrument(int type, const char *name) {
     }
   }
   else if (type == INSTRUMENT_TYPE_VSTI) {
-    if (PathIsFileSpec(name)) {
+    if (PathIsFileSpecA(name)) {
       struct select_instrument_cb : vsti_enum_callback {
         void operator () (const char *value) {
           if (!found) {
-            if (_stricmp(PathFindFileName(value), name) == 0) {
+            if (_stricmp(PathFindFileNameA(value), name) == 0) {
               strncpy(name, value, sizeof(name));
               name[sizeof(name) - 1] = 0;
               found = true;
@@ -2751,23 +2754,23 @@ int config_set_keymap(const char *mapname) {
 
 // get exe path
 void config_get_media_path(char *buff, int buff_size, const char *path) {
-  if (PathIsRelative(path)) {
+  if (PathIsRelativeA(path)) {
     char base[MAX_PATH];
     char temp[MAX_PATH];
 
     GetModuleFileNameA(NULL, base, sizeof(base));
 
     // remove file spec
-    PathRemoveFileSpec(base);
+    PathRemoveFileSpecA(base);
 
     // to media path
 #ifdef _DEBUG
-    PathAppend(base, "\\..\\..\\data\\");
+    PathAppendA(base, "\\..\\..\\data\\");
 #else
-    PathAppend(base, "\\.\\");
+    PathAppendA(base, "\\.\\");
 #endif
 
-    PathCombine(temp, base, path);
+    PathCombineA(temp, base, path);
     strncpy(buff, temp, buff_size);
   } else {
     strncpy(buff, path, buff_size);
@@ -2780,7 +2783,7 @@ void config_get_media_path(char *buff, int buff_size, const char *path) {
 
 // get relative path
 void config_get_relative_path(char *buff, int buff_size, const char *path) {
-  if (PathIsRelative(path)) {
+  if (PathIsRelativeA(path)) {
     strncpy(buff, path, buff_size);
   } else {
     char base[MAX_PATH];

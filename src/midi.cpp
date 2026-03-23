@@ -59,10 +59,10 @@ int midi_open_output(const char *name) {
 
   if (name && name[0]) {
     for (uint i = 0; i < midiOutGetNumDevs(); i++) {
-      MIDIOUTCAPS caps;
+      MIDIOUTCAPSA caps;
 
       // get device caps
-      if (midiOutGetDevCaps(i, &caps, sizeof(caps)))
+      if (midiOutGetDevCapsA(i, &caps, sizeof(caps)))
         continue;
 
       if (_stricmp(name, caps.szPname) == 0) {
@@ -133,10 +133,10 @@ void midi_open_inputs() {
   // enum devices
   for (uint i = 0; i < midiInGetNumDevs(); i++) {
     midi_input_config_t config;
-    MIDIINCAPS caps;
+    MIDIINCAPSA caps;
 
     // get device caps
-    if (midiInGetDevCaps(i, &caps, sizeof(caps)))
+    if (midiInGetDevCapsA(i, &caps, sizeof(caps)))
       continue;
 
     config_get_midi_input_config(caps.szPname, &config);
@@ -187,10 +187,10 @@ void midi_close_inputs() {
 // enum input
 void midi_enum_input(midi_enum_callback &callback) {
   for (uint i = 0; i < midiInGetNumDevs(); i++) {
-    MIDIINCAPS caps;
+    MIDIINCAPSA caps;
 
     // get device caps
-    if (midiInGetDevCaps(i, &caps, sizeof(caps)))
+    if (midiInGetDevCapsA(i, &caps, sizeof(caps)))
       continue;
 
     callback(caps.szPname);
@@ -200,10 +200,10 @@ void midi_enum_input(midi_enum_callback &callback) {
 // enum input
 void midi_enum_output(midi_enum_callback &callback) {
   for (uint i = 0; i < midiOutGetNumDevs(); i++) {
-    MIDIOUTCAPS caps;
+    MIDIOUTCAPSA caps;
 
     // get device caps
-    if (midiOutGetDevCaps(i, &caps, sizeof(caps)))
+    if (midiOutGetDevCapsA(i, &caps, sizeof(caps)))
       continue;
 
     callback(caps.szPname);

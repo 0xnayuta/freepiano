@@ -105,7 +105,7 @@ HRESULT CWaveFile::Open( LPSTR strFileName, WAVEFORMATEX* pwfx, DWORD dwFlags )
             return E_INVALIDARG;
         SAFE_DELETE_ARRAY( m_pwfx );
 
-        m_hmmio = mmioOpen( strFileName, NULL, MMIO_ALLOCBUF | MMIO_READ );
+        m_hmmio = mmioOpenA( strFileName, NULL, MMIO_ALLOCBUF | MMIO_READ );
 
         if( FAILED( hr = ReadMMIO() ) )
         {
@@ -122,7 +122,7 @@ HRESULT CWaveFile::Open( LPSTR strFileName, WAVEFORMATEX* pwfx, DWORD dwFlags )
     }
     else
     {
-        m_hmmio = mmioOpen( strFileName, NULL, MMIO_ALLOCBUF  |
+        m_hmmio = mmioOpenA( strFileName, NULL, MMIO_ALLOCBUF  |
                                                   MMIO_READWRITE |
                                                   MMIO_CREATE );
         if( NULL == m_hmmio )

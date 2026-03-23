@@ -22,7 +22,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 
   // config init
   if (config_init()) {
-    MessageBox(NULL, lang_get_last_error(), APP_NAME, MB_OK);
+    MessageBoxW(NULL, lang_get_last_error_w(), APP_NAME_W, MB_OK);
     return 1;
   }
 
@@ -34,19 +34,19 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 
   // init gui
   if (gui_init()) {
-    MessageBox(NULL, lang_get_last_error(), APP_NAME, MB_OK);
+    MessageBoxW(NULL, lang_get_last_error_w(), APP_NAME_W, MB_OK);
     return 1;
   }
 
   // init display
   if (display_init(gui_get_window())) {
-    MessageBox(NULL, lang_get_last_error(), APP_NAME, MB_OK);
+    MessageBoxW(NULL, lang_get_last_error_w(), APP_NAME_W, MB_OK);
     return 1;
   }
 
   // intialize keyboard
   if (keyboard_init()) {
-    MessageBox(NULL, lang_get_last_error(), APP_NAME, MB_OK);
+    MessageBoxW(NULL, lang_get_last_error_w(), APP_NAME_W, MB_OK);
     return 1;
   }
 
