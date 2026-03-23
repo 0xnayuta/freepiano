@@ -2290,9 +2290,9 @@ static void display_update() {
       last_time = time;
 
 #ifdef _DEBUG
-      char buff[256];
-      sprintf_s(buff, APP_NAME" FPS: %d\n", FPS);
-      SetWindowTextA(gui_get_window(), buff);
+      wchar_t buff[256];
+      swprintf_s(buff, L"%s FPS: %d", APP_NAME_W, FPS);
+      SetWindowTextW(gui_get_window(), buff);
 #endif
     }
   }

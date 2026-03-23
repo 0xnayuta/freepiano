@@ -1,116 +1,291 @@
-# FreePiano 国际化审计（第一阶段）
+# FreePiano 国际化审计与现代化改造
 
-更新时间：2026-03-23
+更新时间：2026-03-23（第三阶段完成）
 
-## 1. 当前国际化资源来源
+---
 
-### 1.1 UI 字符串
-- `src/language_strdef.h`
-- `src/language.h`
-- `src/language.cpp`
+## 已完成的全部改造
 
-说明：
-- 当前核心 UI 文本由 `language_strdef.h` 中的宏表维护。
-- 运行时初始化为 `string_table[语言][字符串ID]`。
-- 当前仅支持：
-  - `FP_LANG_ENGLISH`
-  - `FP_LANG_SCHINESE`
+### 第一阶段：基础设施
 
-### 1.2 对话框资源
-- `res/freepiano.rc`
-- `res/resource.h`
+#### 1.1 UI 语言持久化 ✅
+- `config.h` / `config.cpp`：增加 `ui_language` 字段
+- 语言存储为字符串代码：`auto`, `en`, `zh-CN`
+- 启动时预加载用户语言配置
 
-说明：
-- `.rc` 中大量控件文本使用 `"IDS_..."` 占位。
-- 运行时通过 `lang_localize_dialog()` 遍历窗口文本并替换成真实翻译。
-- 该方案可工作，但耦合较强，后续建议迁移为“控件ID -> 字符串ID/Key”映射。
+#### 1.2 默认语言检测现代化 ✅
+- 从 `GetThreadLocale()` 迁移到 `GetUserDefaultUILanguage()`
+- 支持用户配置优先
 
-### 1.3 长文本 / 说明文本
-- `res/controllers_en.txt`
-- `res/controllers_ch.txt`
-- `res/default_setting.txt`
+#### 1.3 宽字符接口 ✅
+- `lang_load_string_w()` - 加载宽字符字符串
+- `lang_format_string_w()` - 格式化宽字符字符串
+- `lang_load_filter_w()` - 加载文件过滤器（支持嵌入 null）
+- `lang_get_last_error_w()` - 获取宽字符错误信息
+- `lang_get_code()` / `lang_from_code()` - 语言代码转换
 
-说明：
-- `controllers_*.txt` 通过 `TEXT` 资源 + `FindResourceEx()` 按语言加载。
-- `default_setting.txt` 当前只有一份，属于默认脚本/配置内容，不按语言区分。
+---
 
-### 1.4 脚本 / DSL 本地化兼容层
-- `src/config.cpp`
+### 第二阶段：GUI Unicode 迁移 ✅
 
-说明：
-- `bind_names`
-- `action_names`
-- `value_action_names`
-- `channel_names`
+#### 2.1 主窗口
+- `WNDCLASSEXA` → `WNDCLASSEXW`
+- `RegisterClassExA()` → `RegisterClassExW()`
+- `CreateWindowA()` → `CreateWindowW()`
+- 主窗口标题使用 `APP_NAME_W`
 
-这些表同时承担：
-- DSL 标准关键字
-- DSL 兼容别名（含中文）
-- 局部显示用途
+#### 2.2 主菜单
+- 所有菜单文本改用 `lang_load_string_w()`
+- `append_menu_text_w()` 辅助函数
 
-后续建议拆分为：
-- 规范语法词表
-- 兼容别名字典
+#### 2.3 消息框
+- 所有错误提示改用 `MessageBoxW()` + 宽字符字符串
 
-## 2. 当前主要问题
+#### 2.4 设置窗口
+- TreeView 页面标题使用宽字符
+- Audio/Play/MIDI/GUI 设置页所有控件使用宽字符
+- ListView 列标题和内容使用宽字符
+- ComboBox 下拉选项使用宽字符
 
-### 2.1 ANSI / ACP 依赖
-- `src/language.cpp` 中 `utf8_to_local()`：UTF-8 -> UTF-16 -> ACP
-- `src/config.cpp` 中 `utf8_to_local_name()`：UTF-8 -> UTF-16 -> ACP
+#### 2.5 对话框
+- `lang_localize_dialog()` 完全改用宽字符版本
+- 所有对话框标题正确本地化
 
-问题：
-- 依赖系统 ANSI 代码页
-- 不利于多语言扩展
-- 容易在非中文 ACP 环境中出现显示异常
+#### 2.6 文件对话框
+- `open_dialog()` / `save_dialog()` 改用 `OPENFILENAMEW`
+- 过滤器字符串正确处理嵌入 null 字符
 
-### 2.2 系统语言检测过时
-- 当前使用 `GetThreadLocale()`
-- 后续应改为：
-  - `GetUserDefaultUILanguage()`
-  - 并支持用户配置优先
+#### 2.7 VST 窗口
+- 窗口类注册和创建改用宽字符版本
+- VST 效果名称正确显示
 
-### 2.3 UI 语言未显式持久化
-- 当前程序支持运行时切换语言
-- 但启动前缺少稳定的用户语言配置入口
-- 后续将增加：
-  - `auto`
-  - `en`
-  - `zh-CN`
+---
 
-### 2.4 文件格式与 UI 语言边界需要明确
-- `.map` 导出当前已强制英文，方向正确
-- 后续需要在文档与实现中继续明确：
-  - UI 可本地化
-  - 存储格式保持英文规范
+### 第三阶段：JSON 翻译文件支持 ✅
 
-## 3. 当前迁移顺序（已确认）
+#### 3.1 JSON 解析器
+- `json_loader.h` / `json_loader.cpp` - 无外部依赖的 JSON 解析器
+- 支持 `\uXXXX` Unicode 转义
+- 支持 `\u0000` 嵌入 null 字符
+- 支持注释（非标准但有用）
 
-1. 建立国际化审计文档（当前文件）
-2. 为配置增加 UI 语言持久化
-3. 用现代 API 替换默认语言检测
-4. 为 `language` 模块增加宽字符接口
-5. 再逐步推进 GUI / 菜单 / 对话框宽字符化
-6. 再推进新资源格式（如 JSON）
+#### 3.2 JSON 翻译文件
+- `res/locales/en.json` - 165 条英语字符串
+- `res/locales/zh-CN.json` - 165 条中文字符串
+- `_meta` 元数据：语言代码、名称、版本
 
-## 4. 明确分类
+#### 3.3 代码集成
+- `pch.h` 中 `#define USE_JSON_TRANSLATIONS 1` 启用
+- `language.cpp` 整合 JSON 加载逻辑
+- 自动回退到硬编码字符串
 
-### 4.1 应该本地化
-- 菜单
-- 对话框标题与说明
-- 错误信息
-- 状态文本
-- 帮助说明
-- 预设说明文本
+#### 3.4 构建集成
+- 构建后自动复制 `locales/` 目录到输出
+- 验证脚本 `scripts/validate_locales.py`
+- 生成脚本 `scripts/generate_locales.py`
 
-### 4.2 不应随 UI 语言变化的存储格式
-- `.map` 标准关键字
-- 配置文件关键字
-- 内部序列化格式
-- 版本字段、固定协议字段
+---
 
-## 5. 第一阶段的验收目标
+## 文件结构
 
-- 支持持久化 UI 语言配置
-- 启动时优先使用用户语言配置
-- 若为 `auto`，则使用系统 UI 语言
-- 为后续 Unicode 重构补齐宽字符接口
+```
+freepiano/
+├── res/
+│   └── locales/
+│       ├── en.json           # 英文翻译
+│       └── zh-CN.json        # 简体中文翻译
+├── src/
+│   ├── language.h            # 语言接口
+│   ├── language.cpp          # 语言实现（JSON + 硬编码）
+│   ├── language_strdef.h     # 字符串 ID 定义 + 硬编码翻译
+│   ├── json_loader.h         # JSON 解析器
+│   ├── json_loader.cpp       # JSON 解析器实现
+│   └── pch.h                 # USE_JSON_TRANSLATIONS 开关
+├── scripts/
+│   ├── generate_locales.py   # 从 language_strdef.h 生成 JSON
+│   └── validate_locales.py   # 验证 JSON 完整性
+└── doc/
+    ├── i18n-audit.md         # 本文档
+    └── i18n-json-migration.md # JSON 迁移指南
+```
+
+---
+
+## 使用说明
+
+### 切换 JSON / 硬编码翻译
+
+编辑 `src/pch.h`：
+
+```cpp
+// 启用 JSON 翻译
+#define USE_JSON_TRANSLATIONS 1
+
+// 禁用 JSON 翻译（使用硬编码）
+// #define USE_JSON_TRANSLATIONS 1
+```
+
+### 添加新语言
+
+1. 创建 `res/locales/ja.json`：
+```json
+{
+  "_meta": {
+    "language": "ja",
+    "name": "日本語",
+    "version": "1.8"
+  },
+  "strings": {
+    "IDS_MENU_FILE": "ファイル",
+    ...
+  }
+}
+```
+
+2. 在 `language.h` 添加：
+```cpp
+#define FP_LANG_JAPANESE  2
+#define FP_LANG_COUNT     3
+```
+
+3. 在 `language.cpp` 的 `lang_get_code()` 和 `lang_from_code()` 中添加映射
+
+### 更新翻译
+
+1. 编辑 `src/language_strdef.h` 或直接编辑 `res/locales/*.json`
+2. 运行 `python scripts/generate_locales.py` 重新生成（如果修改了 .h 文件）
+3. 运行 `python scripts/validate_locales.py` 验证
+
+---
+
+## 架构设计
+
+### 字符串加载流程
+
+```
+lang_load_string_w(id)
+    │
+    ├─ USE_JSON_TRANSLATIONS=1
+    │   ├─ 从 json_string_tables[当前语言] 查找
+    │   ├─ 未找到 → 从 json_string_tables[英文] 查找
+    │   └─ 未找到 → 回退到硬编码
+    │
+    └─ USE_JSON_TRANSLATIONS 未定义
+        └─ 直接返回硬编码 string_table_w[语言][id]
+```
+
+### 文件对话框过滤器处理
+
+```
+"键盘配置 (*.map)\0*.map\0"
+       │
+       ├─ JSON 存储: "键盘配置 (*.map)\u0000*.map\u0000"
+       │
+       ├─ JSON 解析: std::string 包含嵌入 null
+       │
+       └─ 宽字符转换: utf8_to_wide_owned_len(data, size)
+                      保留完整内容传递给 OPENFILENAMEW
+```
+
+---
+
+## 辅助函数
+
+### GUI 控件包装器
+
+```cpp
+// ListView
+listview_insert_item_a/w()
+listview_set_item_text_a/w()
+listview_insert_column_a/w()
+
+// TreeView
+treeview_insert_item_a/w()
+
+// ComboBox
+combobox_add_string_a/w()
+
+// Menu
+append_menu_text()
+append_menu_text_w()
+append_menu_text_codepage()
+```
+
+---
+
+## 验收标准 ✅
+
+- [x] 编译成功（Unicode 工程）
+- [x] 主窗口标题正常显示
+- [x] 菜单文本正确本地化
+- [x] 对话框标题正确本地化
+- [x] 错误提示正确显示
+- [x] 设置页面所有控件文本正常
+- [x] 文件对话框过滤器正常工作
+- [x] VST 插件窗口标题正常显示
+- [x] 语言切换后重启保持设置
+- [x] JSON 翻译文件正确加载
+- [x] 文件类型过滤器无多余字符
+
+---
+
+## 后续可选改进
+
+1. **更多语言支持**
+   - 日语、韩语、繁体中文等
+   - 需要社区贡献翻译
+
+2. **RTL 语言支持**
+   - 阿拉伯语、希伯来语
+   - 需要布局镜像处理
+
+3. **动态字体加载**
+   - 支持更多 Unicode 音符符号
+   - 支持东亚文字显示优化
+
+4. **翻译管理平台**
+   - 集成 Crowdin / Weblate
+   - 自动同步翻译更新
+
+---
+
+## 维护指南
+
+### 新增可本地化字符串
+
+1. 在 `language_strdef.h` 添加：
+```cpp
+STR_ENGLISH  (IDS_NEW_STRING, "English text")
+STR_SCHINESE (IDS_NEW_STRING, u8"中文文本")
+```
+
+2. 在 `language.h` 的枚举中添加 ID（宏会自动处理）
+
+3. 重新生成 JSON：
+```bash
+python scripts/generate_locales.py
+```
+
+### 新增固定格式字段（不应本地化）
+
+保持使用英文字符串，不要通过 `lang_load_string()` 加载：
+- 文件格式关键字
+- 协议字段
+- 版本标识
+
+---
+
+## 总结
+
+FreePiano 国际化现代化改造已完成：
+
+| 方面 | 改造前 | 改造后 |
+|------|--------|--------|
+| 字符集 | ANSI/ACP | Unicode (UTF-8/UTF-16) |
+| 翻译存储 | 硬编码宏 | JSON 文件（可选） |
+| 语言检测 | GetThreadLocale | GetUserDefaultUILanguage |
+| 语言持久化 | 无 | config 文件存储 |
+| 文件对话框 | ANSI | Unicode |
+| VST 窗口 | ANSI 标题乱码 | Unicode 正常显示 |
+
+项目现在具备完整的国际化基础设施，支持社区贡献翻译，并保持向后兼容。

@@ -2,6 +2,9 @@
 
 #pragma warning(disable: 4819)
 
+// Enable JSON-based translations (comment out to use hardcoded strings)
+#define USE_JSON_TRANSLATIONS 1
+
 #ifndef DIRECTINPUT_VERSION
 #define DIRECTINPUT_VERSION         0x0800
 #endif

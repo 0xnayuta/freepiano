@@ -498,7 +498,7 @@ static HWND create_effect_window(AEffect *effect) {
 
   if (!initialized) {
     // register window class
-    WNDCLASSEXA wc = { sizeof(wc), 0 };
+    WNDCLASSEXW wc = { sizeof(wc), 0 };
     wc.style = CS_DBLCLKS;
     wc.lpfnWndProc = &vst_editor_wndproc;
     wc.cbClsExtra = 0;
@@ -508,10 +508,10 @@ static HWND create_effect_window(AEffect *effect) {
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
     wc.lpszMenuName = NULL;
-    wc.lpszClassName = "FreePianoVstEffect";
+    wc.lpszClassName = L"FreePianoVstEffect";
     wc.hIconSm = NULL;
 
-    RegisterClassExA(&wc);
+    RegisterClassExW(&wc);
 
     initialized = true;
   }
@@ -519,8 +519,12 @@ static HWND create_effect_window(AEffect *effect) {
   char effectName[256] = {0};
   effect->dispatcher(effect, effGetEffectName, 0, 0, effectName, 0);
 
+  // Convert effect name from ANSI to wide string
+  wchar_t effectNameW[256] = {0};
+  MultiByteToWideChar(CP_ACP, 0, effectName, -1, effectNameW, ARRAYSIZE(effectNameW));
+
   // create window
-  HWND hwnd = CreateWindowA("FreePianoVstEffect", effectName, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, NULL, NULL, GetModuleHandle(NULL), NULL);
+  HWND hwnd = CreateWindowW(L"FreePianoVstEffect", effectNameW, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, NULL, NULL, GetModuleHandle(NULL), NULL);
 
   if (hwnd) {
     SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(effect));

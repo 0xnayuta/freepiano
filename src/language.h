@@ -37,6 +37,9 @@ const char* lang_load_string(uint uid);
 // load wide str
 const wchar_t* lang_load_string_w(uint uid);
 
+// load filter string for file dialogs (handles embedded nulls)
+const wchar_t* lang_load_filter_w(uint uid);
+
 // load lang string array
 const char** lang_load_string_array(uint uid);
 

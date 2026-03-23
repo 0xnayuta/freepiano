@@ -39,54 +39,66 @@ static void try_open_song(int err) {
   }
 }
 
-static bool open_dialog(char *buff, size_t size, const char* filters, const char* init_dir = NULL) {
-  char dir[260] = {0};
+static bool open_dialog(char *buff, size_t size, const wchar_t* filters, const char* init_dir = NULL) {
+  wchar_t wbuff[260] = {0};
+  wchar_t wdir[260] = {0};
 
-  OPENFILENAMEA ofn;
+  OPENFILENAMEW ofn;
   memset(&ofn, 0, sizeof(ofn));
   ofn.lStructSize = sizeof(ofn);
   ofn.hwndOwner = gui_get_window();
-  ofn.lpstrFile = buff;
+  ofn.lpstrFile = wbuff;
   ofn.lpstrFile[0] = 0;
-  ofn.nMaxFile = static_cast<DWORD>(size);
+  ofn.nMaxFile = ARRAYSIZE(wbuff);
   ofn.lpstrFilter = filters;
   ofn.nFilterIndex = 1;
   ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
   ofn.nFileExtension = 0;
-  //ofn.lpstrDefExt = ".map";
 
   if (init_dir) {
+    char dir[260] = {0};
     config_get_media_path(dir, sizeof(dir), init_dir);
     PathRemoveFileSpecA(dir);
-    ofn.lpstrInitialDir = dir;
+    MultiByteToWideChar(CP_ACP, 0, dir, -1, wdir, ARRAYSIZE(wdir));
+    ofn.lpstrInitialDir = wdir;
   }
 
-  return GetOpenFileNameA(&ofn) != 0;
+  bool result = GetOpenFileNameW(&ofn) != 0;
+  if (result && wbuff[0]) {
+    WideCharToMultiByte(CP_ACP, 0, wbuff, -1, buff, static_cast<int>(size), NULL, NULL);
+  }
+  return result;
 }
 
-static bool save_dialog(char *buff, size_t size, const char *filters, const char* init_dir = NULL) {
-  char dir[260] = {0};
+static bool save_dialog(char *buff, size_t size, const wchar_t *filters, const char* init_dir = NULL) {
+  wchar_t wbuff[260] = {0};
+  wchar_t wdir[260] = {0};
 
-  OPENFILENAMEA ofn;
+  OPENFILENAMEW ofn;
   memset(&ofn, 0, sizeof(ofn));
   ofn.lStructSize = sizeof(ofn);
   ofn.hwndOwner = gui_get_window();
-  ofn.lpstrFile = buff;
+  ofn.lpstrFile = wbuff;
   ofn.lpstrFile[0] = 0;
-  ofn.nMaxFile = static_cast<DWORD>(size);
+  ofn.nMaxFile = ARRAYSIZE(wbuff);
   ofn.lpstrFilter = filters;
   ofn.nFilterIndex = 1;
   ofn.Flags = OFN_PATHMUSTEXIST;
   ofn.nFileExtension = 0;
-  //ofn.lpstrDefExt = ".map";
 
   if (init_dir) {
+    char dir[260] = {0};
     config_get_media_path(dir, sizeof(dir), init_dir);
     PathRemoveFileSpecA(dir);
-    ofn.lpstrInitialDir = dir;
+    MultiByteToWideChar(CP_ACP, 0, dir, -1, wdir, ARRAYSIZE(wdir));
+    ofn.lpstrInitialDir = wdir;
   }
 
-  return GetSaveFileNameA(&ofn) != 0;
+  bool result = GetSaveFileNameW(&ofn) != 0;
+  if (result && wbuff[0]) {
+    WideCharToMultiByte(CP_ACP, 0, wbuff, -1, buff, static_cast<int>(size), NULL, NULL);
+  }
+  return result;
 }
 
 static BOOL append_menu_text_codepage(HMENU menu, UINT flags, UINT_PTR item_id, const char *text, UINT codepage) {
@@ -120,12 +132,23 @@ static BOOL listview_set_item_text_a(HWND list, int item, int subitem, LPSTR tex
   return static_cast<BOOL>(SendMessageA(list, LVM_SETITEMTEXTA, static_cast<WPARAM>(item), reinterpret_cast<LPARAM>(&lv)));
 }
 
+static BOOL listview_set_item_text_w(HWND list, int item, int subitem, LPWSTR text) {
+  LVITEMW lv = {};
+  lv.iSubItem = subitem;
+  lv.pszText = text ? text : const_cast<LPWSTR>(L"");
+  return static_cast<BOOL>(SendMessageW(list, LVM_SETITEMTEXTW, static_cast<WPARAM>(item), reinterpret_cast<LPARAM>(&lv)));
+}
+
 static int listview_insert_item_a(HWND list, LVITEMA *item) {
   return static_cast<int>(SendMessageA(list, LVM_INSERTITEMA, 0, reinterpret_cast<LPARAM>(item)));
 }
 
 static int listview_insert_column_a(HWND list, int column, LVCOLUMNA *column_info) {
   return static_cast<int>(SendMessageA(list, LVM_INSERTCOLUMNA, static_cast<WPARAM>(column), reinterpret_cast<LPARAM>(column_info)));
+}
+
+static int listview_insert_column_w(HWND list, int column, LVCOLUMNW *column_info) {
+  return static_cast<int>(SendMessageW(list, LVM_INSERTCOLUMNW, static_cast<WPARAM>(column), reinterpret_cast<LPARAM>(column_info)));
 }
 
 static BOOL listview_get_item_text_a(HWND list, int item, int subitem, LPSTR text, int cchTextMax) {
@@ -138,6 +161,29 @@ static BOOL listview_get_item_text_a(HWND list, int item, int subitem, LPSTR tex
 
 static HTREEITEM treeview_insert_item_a(HWND tree, TVINSERTSTRUCTA *item) {
   return reinterpret_cast<HTREEITEM>(SendMessageA(tree, TVM_INSERTITEMA, 0, reinterpret_cast<LPARAM>(item)));
+}
+
+static HTREEITEM treeview_insert_item_w(HWND tree, TVINSERTSTRUCTW *item) {
+  return reinterpret_cast<HTREEITEM>(SendMessageW(tree, TVM_INSERTITEMW, 0, reinterpret_cast<LPARAM>(item)));
+}
+
+static int combobox_add_string_a(HWND combo, const char *text) {
+  if (text == NULL)
+    text = "";
+
+  wchar_t wide_text[4096];
+  int length = MultiByteToWideChar(CP_ACP, 0, text, -1, wide_text, ARRAYSIZE(wide_text));
+  if (length > 0)
+    return static_cast<int>(SendMessageW(combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(wide_text)));
+
+  return static_cast<int>(SendMessageA(combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(text)));
+}
+
+static int combobox_add_string_w(HWND combo, const wchar_t *text) {
+  if (text == NULL)
+    text = L"";
+
+  return static_cast<int>(SendMessageW(combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(text)));
 }
 
 // Numeric edit control
@@ -228,19 +274,19 @@ static INT_PTR CALLBACK settings_midi_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 
   struct helpers {
     static void update_midi_input(HWND list, int id, const char *device) {
-      char buff[256];
+      wchar_t wbuff[256];
       midi_input_config_t config;
       config_get_midi_input_config(device, &config);
 
-      listview_set_item_text_a(list, id, 1, (LPSTR)lang_load_string(config.enable ? IDS_MIDI_INPUT_LIST_ENABLED : IDS_MIDI_INPUT_LIST_DISABLED));
+      listview_set_item_text_w(list, id, 1, const_cast<LPWSTR>(lang_load_string_w(config.enable ? IDS_MIDI_INPUT_LIST_ENABLED : IDS_MIDI_INPUT_LIST_DISABLED)));
 
       if (config.remap == 0) {
-        strcpy_s(buff, lang_load_string(IDS_MIDI_INPUT_LIST_REMAP_OUTPUT));
+        wcscpy_s(wbuff, lang_load_string_w(IDS_MIDI_INPUT_LIST_REMAP_OUTPUT));
       }
       else {
-        lang_format_string(buff, sizeof(buff), IDS_MIDI_INPUT_LIST_REMAP_INPUT, config.remap - 1);
+        lang_format_string_w(wbuff, ARRAYSIZE(wbuff), IDS_MIDI_INPUT_LIST_REMAP_INPUT, config.remap - 1);
       }
-      listview_set_item_text_a(list, id, 2, (LPSTR)buff);
+      listview_set_item_text_w(list, id, 2, wbuff);
     }
 
     static void refresh_midi_inputs(HWND hWnd) {
@@ -308,27 +354,27 @@ static INT_PTR CALLBACK settings_midi_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
    case WM_INITDIALOG: {
      lang_localize_dialog(hWnd);
 
-     LVCOLUMNA lvc = {0};
+     LVCOLUMNW lvc = {0};
      HWND input_list = GetDlgItem(hWnd, IDC_MIDI_INPUT_LIST);
 
      lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
      lvc.fmt = LVCFMT_LEFT;
 
      // Device
-     lvc.pszText = (LPSTR)lang_load_string(IDS_MIDI_INPUT_LIST_DEVICE);
+     lvc.pszText = const_cast<LPWSTR>(lang_load_string_w(IDS_MIDI_INPUT_LIST_DEVICE));
      lvc.cx = 300;
-     listview_insert_column_a(input_list, 0, &lvc);
+     listview_insert_column_w(input_list, 0, &lvc);
 
      // Enable.
-     lvc.pszText = (LPSTR)lang_load_string(IDS_MIDI_INPUT_LIST_ENABLE);
+     lvc.pszText = const_cast<LPWSTR>(lang_load_string_w(IDS_MIDI_INPUT_LIST_ENABLE));
      lvc.cx = 60;
      lvc.fmt = LVCFMT_CENTER;
-     listview_insert_column_a(input_list, 2, &lvc);
+     listview_insert_column_w(input_list, 2, &lvc);
 
      // Channel.
-     lvc.pszText = (LPSTR)lang_load_string(IDS_MIDI_INPUT_LIST_REMAP);
+     lvc.pszText = const_cast<LPWSTR>(lang_load_string_w(IDS_MIDI_INPUT_LIST_REMAP));
      lvc.cx = 60;
-     listview_insert_column_a(input_list, 2, &lvc);
+     listview_insert_column_w(input_list, 2, &lvc);
 
      // Set extended style.
      ListView_SetExtendedListViewStyle(input_list, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
@@ -395,8 +441,8 @@ static INT_PTR CALLBACK settings_midi_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
            if (column == 1) {
              menu_midi_input_enable_popup = helpers::create_popup_menu();
 
-             append_menu_text(menu_midi_input_enable_popup,  MF_STRING, static_cast<UINT_PTR>(0), lang_load_string(IDS_MIDI_INPUT_LIST_ENABLED));
-             append_menu_text(menu_midi_input_enable_popup,  MF_STRING, static_cast<UINT_PTR>(0), lang_load_string(IDS_MIDI_INPUT_LIST_DISABLED));
+             append_menu_text_w(menu_midi_input_enable_popup,  MF_STRING, static_cast<UINT_PTR>(0), lang_load_string_w(IDS_MIDI_INPUT_LIST_ENABLED));
+             append_menu_text_w(menu_midi_input_enable_popup,  MF_STRING, static_cast<UINT_PTR>(0), lang_load_string_w(IDS_MIDI_INPUT_LIST_DISABLED));
 
              helpers::show_popup_menu(menu_midi_input_enable_popup, hWnd);
            }
@@ -404,11 +450,11 @@ static INT_PTR CALLBACK settings_midi_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
            else if (column == 2) {
              menu_midi_input_channel_popup = helpers::create_popup_menu();
 
-             append_menu_text(menu_midi_input_channel_popup,  MF_STRING, static_cast<UINT_PTR>(0), lang_load_string(IDS_MIDI_INPUT_LIST_REMAP_OUTPUT));
+             append_menu_text_w(menu_midi_input_channel_popup,  MF_STRING, static_cast<UINT_PTR>(0), lang_load_string_w(IDS_MIDI_INPUT_LIST_REMAP_OUTPUT));
              for (int i = 0; i < 16; i++) {
-               char buff[256];
-               lang_format_string(buff, sizeof(buff), IDS_MIDI_INPUT_LIST_REMAP_INPUT, i);
-               append_menu_text(menu_midi_input_channel_popup,  MF_STRING, static_cast<UINT_PTR>(0), buff);
+               wchar_t wbuff[256];
+               lang_format_string_w(wbuff, ARRAYSIZE(wbuff), IDS_MIDI_INPUT_LIST_REMAP_INPUT, i);
+               append_menu_text_w(menu_midi_input_channel_popup,  MF_STRING, static_cast<UINT_PTR>(0), wbuff);
              }
 
              helpers::show_popup_menu(menu_midi_input_channel_popup, hWnd);
@@ -460,7 +506,7 @@ static INT_PTR CALLBACK settings_audio_proc(HWND hWnd, UINT uMsg, WPARAM wParam,
 
           _snprintf(buff, sizeof(buff), "%s: %s", output_types[type], value);
           buff[sizeof(buff) - 1] = 0;
-          ComboBox_AddString(list, buff);
+          combobox_add_string_a(list, buff);
           if (config_get_output_type() == type) {
             if (_stricmp(value, config_get_output_device()) == 0) {
               ComboBox_SetCurSel(list, ComboBox_GetCount(list) - 1);
@@ -499,12 +545,14 @@ static INT_PTR CALLBACK settings_audio_proc(HWND hWnd, UINT uMsg, WPARAM wParam,
       ComboBox_ResetContent(output_list);
       ComboBox_SetItemHeight(output_list, 0, 16);
       if (config_get_output_type() == OUTPUT_TYPE_AUTO) {
-        char buff[256];
-        sprintf_s(buff, "%s: %s", lang_load_string(IDS_SETTING_AUDIO_AUTO), output_types[config_get_current_output_type()]);
-        ComboBox_AddString(output_list, buff);
+        wchar_t wbuff[256];
+        wchar_t type_w[64];
+        MultiByteToWideChar(CP_ACP, 0, output_types[config_get_current_output_type()], -1, type_w, ARRAYSIZE(type_w));
+        swprintf_s(wbuff, L"%s: %s", lang_load_string_w(IDS_SETTING_AUDIO_AUTO), type_w);
+        combobox_add_string_w(output_list, wbuff);
       }
       else {
-        ComboBox_AddString(output_list, lang_load_string(IDS_SETTING_AUDIO_AUTO));
+        combobox_add_string_w(output_list, lang_load_string_w(IDS_SETTING_AUDIO_AUTO));
       }
       ComboBox_SetCurSel(output_list, 0);
       dsound_enum_device(callback(OUTPUT_TYPE_DSOUND, output_list));
@@ -634,18 +682,19 @@ static INT_PTR CALLBACK settings_play_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 
       for (int id = 0; id < 4; id ++)
       {
+        wchar_t wbuff[256];
         char buff[256];
         int channel = current_page * 4 + id;
 
         // input channel label
-        lang_format_string(buff, sizeof(buff), IDS_SETTING_PLAY_INPUT, channel);
-        SetDlgItemTextA(hWnd, IDC_PLAY_IN_1 + id, buff);
+        lang_format_string_w(wbuff, ARRAYSIZE(wbuff), IDS_SETTING_PLAY_INPUT, channel);
+        SetDlgItemTextW(hWnd, IDC_PLAY_IN_1 + id, wbuff);
 
-        // coutput channel label
-        lang_format_string(buff, sizeof(buff), IDS_SETTING_PLAY_OUTPUT, config_get_output_channel(channel));
-        SetDlgItemTextA(hWnd, IDC_PLAY_OUT_1 + id, buff);
+        // output channel label
+        lang_format_string_w(wbuff, ARRAYSIZE(wbuff), IDS_SETTING_PLAY_OUTPUT, config_get_output_channel(channel));
+        SetDlgItemTextW(hWnd, IDC_PLAY_OUT_1 + id, wbuff);
 
-        // velocity 
+        // velocity
         update_numeric_edit(hWnd, IDC_PLAY_VELOCITY1 + id, config_get_key_velocity(channel));
 
         // transpose
@@ -660,7 +709,7 @@ static INT_PTR CALLBACK settings_play_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
         ComboBox_ResetContent(octshift);
         for (int i = 0; i < ARRAY_COUNT(keyboard_shifts); i++)
         {
-          ComboBox_AddString(octshift, keyboard_shifts[i]);
+          combobox_add_string_a(octshift, keyboard_shifts[i]);
           if (atoi(keyboard_shifts[i]) == config_get_key_octshift(channel))
             ComboBox_SetCurSel(octshift, i);
         }
@@ -673,7 +722,7 @@ static INT_PTR CALLBACK settings_play_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
           char buff[256];
           _snprintf(buff, sizeof(buff), "%d", i);
           buff[sizeof(buff) - 1] = 0;
-          ComboBox_AddString(keychannel, buff);
+          combobox_add_string_a(keychannel, buff);
           if (i == config_get_output_channel(channel))
             ComboBox_SetCurSel(keychannel, i);
         }
@@ -930,8 +979,8 @@ static INT_PTR CALLBACK settings_gui_proc(HWND hWnd, UINT uMsg, WPARAM wParam, L
   struct helpers {
     static void refresh_combobox(HWND combo, combo_option_t *options, int num_options, int value) {
       for (int i = 0; i < num_options; i++) {
-        const char *name = lang_load_string(options[i].name);
-        ComboBox_AddString(combo, name);
+        const wchar_t *name = lang_load_string_w(options[i].name);
+        combobox_add_string_w(combo, name);
         if (options[i].value == value) {
           ComboBox_SetCurSel(combo, ComboBox_GetCount(combo) - 1);
         }
@@ -1065,7 +1114,7 @@ setting_pages[] = {
 // current selected page
 static int setting_selected_page = IDD_SETTING_PLAY;
 
-static void add_setting_page(HWND list, const char *text, int page_id) {
+static void add_setting_page(HWND list, const wchar_t *text, int page_id) {
   LPARAM page_param = 0;
   for (int i = 0; i < ARRAY_COUNT(setting_pages); i++) {
     if (setting_pages[i].dialog == page_id) {
@@ -1074,15 +1123,15 @@ static void add_setting_page(HWND list, const char *text, int page_id) {
     }
   }
 
-  TVINSERTSTRUCTA tvins = {};
+  TVINSERTSTRUCTW tvins = {};
   tvins.item.mask = TVIF_TEXT | TVIF_PARAM;
-  tvins.item.pszText = (char *)text;
+  tvins.item.pszText = const_cast<LPWSTR>(text);
   tvins.item.cchTextMax = 0;
   tvins.item.lParam = page_param;
   tvins.hInsertAfter = NULL;
   tvins.hParent = TVI_ROOT;
 
-  setting_pages[page_param].item = treeview_insert_item_a(list, &tvins);
+  setting_pages[page_param].item = treeview_insert_item_w(list, &tvins);
 }
 
 static INT_PTR CALLBACK settings_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -1091,11 +1140,11 @@ static INT_PTR CALLBACK settings_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
      lang_localize_dialog(hWnd);
 
      HWND setting_list = GetDlgItem(hWnd, IDC_SETTING_LIST);
-     add_setting_page(setting_list, lang_load_string(IDS_SETTING_LIST_PLAY), IDD_SETTING_PLAY);
-     add_setting_page(setting_list, lang_load_string(IDS_SETTING_LIST_AUDIO), IDD_SETTING_AUDIO);
-     add_setting_page(setting_list, lang_load_string(IDS_SETTING_LIST_MIDI), IDD_SETTING_MIDI);
-     add_setting_page(setting_list, lang_load_string(IDS_SETTING_LIST_GUI), IDD_SETTING_GUI);
-     add_setting_page(setting_list, lang_load_string(IDS_SETTING_LIST_KEYMAP), IDD_SETTING_KEYMAP);
+     add_setting_page(setting_list, lang_load_string_w(IDS_SETTING_LIST_PLAY), IDD_SETTING_PLAY);
+     add_setting_page(setting_list, lang_load_string_w(IDS_SETTING_LIST_AUDIO), IDD_SETTING_AUDIO);
+     add_setting_page(setting_list, lang_load_string_w(IDS_SETTING_LIST_MIDI), IDD_SETTING_MIDI);
+     add_setting_page(setting_list, lang_load_string_w(IDS_SETTING_LIST_GUI), IDD_SETTING_GUI);
+     add_setting_page(setting_list, lang_load_string_w(IDS_SETTING_LIST_KEYMAP), IDD_SETTING_KEYMAP);
    }
    break;
 
@@ -1188,9 +1237,11 @@ static INT_PTR CALLBACK song_info_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
        SetDlgItemTextA(hWnd, IDC_SONG_COMMENT, info->comment);
      }
      else {
-       char buff[1024];
-       sprintf_s(buff, "%s\r\n\r\n%s", lang_load_string(IDS_SONG_INFO_COMPATIBITY), info->comment);
-       SetDlgItemTextA(hWnd, IDC_SONG_COMMENT, buff);
+       wchar_t wbuff[1024];
+       wchar_t comment_w[512];
+       MultiByteToWideChar(CP_ACP, 0, info->comment, -1, comment_w, ARRAYSIZE(comment_w));
+       swprintf_s(wbuff, L"%s\r\n\r\n%s", lang_load_string_w(IDS_SONG_INFO_COMPATIBITY), comment_w);
+       SetDlgItemTextW(hWnd, IDC_SONG_COMMENT, wbuff);
      }
    }
    break;
@@ -1404,11 +1455,11 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
    case MENU_ID_INSTRUMENT_VSTI_BROWSE: {
      char temp[260];
 
-     if (open_dialog(temp, sizeof(temp), lang_load_string(IDS_OPEN_FILTER_VST))) {
+     if (open_dialog(temp, sizeof(temp), lang_load_filter_w(IDS_OPEN_FILTER_VST))) {
        if (int err = config_select_instrument(INSTRUMENT_TYPE_VSTI, temp)) {
-         char buff[256];
-         lang_format_string(buff, sizeof(buff), IDS_ERR_LOAD_VST, err);
-         MessageBoxA(gui_get_window(), buff, APP_NAME, MB_OK);
+         wchar_t wbuff[256];
+         lang_format_string_w(wbuff, ARRAYSIZE(wbuff), IDS_ERR_LOAD_VST, err);
+         MessageBoxW(gui_get_window(), wbuff, APP_NAME_W, MB_OK);
        }
      }
    }
@@ -1424,9 +1475,9 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
        if (type_str) *type_str = '\0';
 
        if (int err = config_select_instrument(INSTRUMENT_TYPE_MIDI, buff)) {
-         char buff[256];
-         lang_format_string(buff, sizeof(buff), IDS_ERR_LOAD_MIDI, err);
-         MessageBoxA(gui_get_window(), buff, APP_NAME, MB_OK);
+         wchar_t wbuff[256];
+         lang_format_string_w(wbuff, ARRAYSIZE(wbuff), IDS_ERR_LOAD_MIDI, err);
+         MessageBoxW(gui_get_window(), wbuff, APP_NAME_W, MB_OK);
        }
      }
      break;
@@ -1437,9 +1488,9 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
        if (type_str) *type_str = '\0';
 
        if (int err = config_select_instrument(INSTRUMENT_TYPE_VSTI, buff)) {
-         char buff[256];
-         lang_format_string(buff, sizeof(buff), IDS_ERR_LOAD_VST, err);
-         MessageBoxA(gui_get_window(), buff, APP_NAME, MB_OK);
+         wchar_t wbuff[256];
+         lang_format_string_w(wbuff, ARRAYSIZE(wbuff), IDS_ERR_LOAD_VST, err);
+         MessageBoxW(gui_get_window(), wbuff, APP_NAME_W, MB_OK);
        }
      }
      break;
@@ -1451,9 +1502,9 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
    case MENU_ID_KEY_MAP:
      if (GetMenuStringA(menu, pos, buff, sizeof(buff), MF_BYPOSITION)) {
        if (int err = config_set_keymap(buff)) {
-         char buff[256];
-         lang_format_string(buff, sizeof(buff), IDS_ERR_LOAD_KEYMAP, err);
-         MessageBoxA(gui_get_window(), buff, APP_NAME, MB_OK);
+         wchar_t wbuff[256];
+         lang_format_string_w(wbuff, ARRAYSIZE(wbuff), IDS_ERR_LOAD_KEYMAP, err);
+         MessageBoxW(gui_get_window(), wbuff, APP_NAME_W, MB_OK);
        }
      }
      break;
@@ -1480,7 +1531,7 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
    case MENU_ID_FILE_OPEN: {
      char temp[260];
-     if (open_dialog(temp, sizeof(temp), lang_load_string(IDS_OPEN_FILTER_SONG), "song\\")) {
+     if (open_dialog(temp, sizeof(temp), lang_load_filter_w(IDS_OPEN_FILTER_SONG), "song\\")) {
        int result = -1;
        const char *extension = PathFindExtensionA(temp);
 
@@ -1500,7 +1551,7 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
      if (result) {
        char temp[260];
-       if (save_dialog(temp, sizeof(temp), lang_load_string(IDS_SAVE_FILTER_SONG), "song\\")) {
+       if (save_dialog(temp, sizeof(temp), lang_load_filter_w(IDS_SAVE_FILTER_SONG), "song\\")) {
          PathRenameExtensionA(temp, ".fpm");
          int result = song_save(temp);
 
@@ -1539,7 +1590,7 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
    case MENU_ID_KEY_MAP_LOAD: {
      char temp[260] = {0};
-     if (open_dialog(temp, sizeof(temp), lang_load_string(IDS_FILTER_MAP), config_get_keymap())) {
+     if (open_dialog(temp, sizeof(temp), lang_load_filter_w(IDS_FILTER_MAP), config_get_keymap())) {
        config_set_keymap(temp);
      }
 
@@ -1551,7 +1602,7 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
      char temp[260] = {0};
 
      if (id == MENU_ID_KEY_MAP_SAVEAS) {
-       if (save_dialog(temp, sizeof(temp), lang_load_string(IDS_FILTER_MAP), config_get_keymap())) {
+       if (save_dialog(temp, sizeof(temp), lang_load_filter_w(IDS_FILTER_MAP), config_get_keymap())) {
          PathRenameExtensionA(temp, ".map");
        }
      }
@@ -1613,7 +1664,7 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
      song_stop_playback();
 
      char temp[260] = {0};
-     if (save_dialog(temp, sizeof(temp), lang_load_string(IDS_SAVE_FILTER_MP4))) {
+     if (save_dialog(temp, sizeof(temp), lang_load_filter_w(IDS_SAVE_FILTER_MP4))) {
        PathRenameExtensionA(temp, ".mp4");
        export_mp4(temp);
      }
@@ -1624,7 +1675,7 @@ int menu_on_command(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
      song_stop_playback();
 
      char temp[260] = {0};
-     if (save_dialog(temp, sizeof(temp), lang_load_string(IDS_SAVE_FILTER_WAV))) {
+     if (save_dialog(temp, sizeof(temp), lang_load_filter_w(IDS_SAVE_FILTER_WAV))) {
        PathRenameExtensionA(temp, ".wav");
        export_wav(temp);
      }
@@ -1713,13 +1764,13 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         RemoveMenu(menu, count - 1, MF_BYPOSITION);
 
       // Load vsti plugin menu
-      append_menu_text(menu_instrument, MF_STRING,
-        (UINT_PTR)MENU_ID_INSTRUMENT_VSTI_BROWSE, lang_load_string(IDS_MENU_INSTRUMENT_BROWSE));
+      append_menu_text_w(menu_instrument, MF_STRING,
+        (UINT_PTR)MENU_ID_INSTRUMENT_VSTI_BROWSE, lang_load_string_w(IDS_MENU_INSTRUMENT_BROWSE));
 
-      append_menu_text(menu_instrument, MF_STRING | (vsti_is_show_editor() ? MF_CHECKED : 0),
-        (UINT_PTR)MENU_ID_INSTRUMENT_VSTI_EIDOTR, lang_load_string(IDS_MENU_INSTRUMENT_GUI));
+      append_menu_text_w(menu_instrument, MF_STRING | (vsti_is_show_editor() ? MF_CHECKED : 0),
+        (UINT_PTR)MENU_ID_INSTRUMENT_VSTI_EIDOTR, lang_load_string_w(IDS_MENU_INSTRUMENT_GUI));
 
-      append_menu_text(menu_instrument, MF_SEPARATOR, 0, NULL);
+      append_menu_text_w(menu_instrument, MF_SEPARATOR, 0, NULL);
 
       enum_midi_callback midi_cb;
       if (config_get_instrument_show_midi()) {
@@ -1757,9 +1808,9 @@ int menu_on_popup(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
       uint enable_save = config_get_keymap()[0] ? MF_ENABLED : MF_DISABLED;
 
       // append action menus
-      append_menu_text(menu, MF_STRING | enable_save, MENU_ID_KEY_MAP_SAVE,   lang_load_string(IDS_MENU_KEYMAP_SAVE));
-      append_menu_text(menu, MF_STRING, MENU_ID_KEY_MAP_LOAD,   lang_load_string(IDS_MENU_KEYMAP_LOAD));
-      append_menu_text(menu, MF_STRING, MENU_ID_KEY_MAP_SAVEAS, lang_load_string(IDS_MENU_KEYMAP_SAVEAS));
+      append_menu_text_w(menu, MF_STRING | enable_save, MENU_ID_KEY_MAP_SAVE,   lang_load_string_w(IDS_MENU_KEYMAP_SAVE));
+      append_menu_text_w(menu, MF_STRING, MENU_ID_KEY_MAP_LOAD,   lang_load_string_w(IDS_MENU_KEYMAP_LOAD));
+      append_menu_text_w(menu, MF_STRING, MENU_ID_KEY_MAP_SAVEAS, lang_load_string_w(IDS_MENU_KEYMAP_SAVEAS));
       append_menu_text(menu, MF_SEPARATOR, 0, NULL);
 
       // enum key maps.

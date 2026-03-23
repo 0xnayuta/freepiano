@@ -157,6 +157,10 @@
       <TargetMachine>MachineX64</TargetMachine>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist &quot;$(OutDir)locales&quot; mkdir &quot;$(OutDir)locales&quot;&#xD;&#xA;xcopy /Y /E &quot;$(ProjectDir)..\res\locales\*&quot; &quot;$(OutDir)locales\&quot;</Command>
+      <Message>Copying locale files...</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -179,6 +183,10 @@
       <TargetMachine>MachineX64</TargetMachine>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist &quot;$(OutDir)locales&quot; mkdir &quot;$(OutDir)locales&quot;&#xD;&#xA;xcopy /Y /E &quot;$(ProjectDir)..\res\locales\*&quot; &quot;$(OutDir)locales\&quot;</Command>
+      <Message>Copying locale files...</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\src\asio\asio.cpp" />
@@ -190,6 +198,7 @@
     <ClCompile Include="..\src\export_mp4.cpp" />
     <ClCompile Include="..\src\export_wav.cpp" />
     <ClCompile Include="..\src\gui.cpp" />
+    <ClCompile Include="..\src\json_loader.cpp" />
     <ClCompile Include="..\src\keyboard.cpp" />
     <ClCompile Include="..\src\language.cpp" />
     <ClCompile Include="..\src\main.cpp" />
@@ -212,6 +221,7 @@
     <ClInclude Include="..\src\export.h" />
     <ClInclude Include="..\src\export_mp4.h" />
     <ClInclude Include="..\src\export_wav.h" />
+    <ClInclude Include="..\src\json_loader.h" />
     <ClInclude Include="..\src\language.h" />
     <ClInclude Include="..\src\language_strdef.h" />
     <ClInclude Include="..\src\update.h" />
