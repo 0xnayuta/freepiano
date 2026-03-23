@@ -1,12 +1,29 @@
 #include "pch.h"
 #include "language.h"
+#include "config.h"
 
 #include <vector>
 
 static int lang_current;
 static const char* string_names[FP_IDS_COUNT];
 static const char* string_table[FP_LANG_COUNT][FP_IDS_COUNT];
+static const wchar_t* string_table_w[FP_LANG_COUNT][FP_IDS_COUNT];
 static std::vector<char*> localized_strings;
+static std::vector<wchar_t*> localized_wstrings;
+
+static wchar_t* utf8_to_wide_owned(const char *text) {
+  if (text == NULL)
+    return NULL;
+
+  int wide_length = MultiByteToWideChar(CP_UTF8, 0, text, -1, NULL, 0);
+  if (wide_length <= 0)
+    return NULL;
+
+  wchar_t *wide_text = new wchar_t[wide_length];
+  MultiByteToWideChar(CP_UTF8, 0, text, -1, wide_text, wide_length);
+  localized_wstrings.push_back(wide_text);
+  return wide_text;
+}
 
 static const char* utf8_to_local(const char *text) {
   if (text == NULL)
@@ -33,6 +50,30 @@ static const char* utf8_to_local(const char *text) {
   return local_text;
 }
 
+const char* lang_get_code(int languageid) {
+  switch (languageid) {
+  case FP_LANG_ENGLISH:
+    return "en";
+  case FP_LANG_SCHINESE:
+    return "zh-CN";
+  default:
+    return "auto";
+  }
+}
+
+int lang_from_code(const char* code) {
+  if (code == NULL || code[0] == 0 || _stricmp(code, "auto") == 0)
+    return FP_LANG_AUTO;
+
+  if (_stricmp(code, "en") == 0 || _stricmp(code, "en-US") == 0)
+    return FP_LANG_ENGLISH;
+
+  if (_stricmp(code, "zh-CN") == 0 || _stricmp(code, "zh") == 0 || _stricmp(code, "zh-Hans") == 0)
+    return FP_LANG_SCHINESE;
+
+  return FP_LANG_AUTO;
+}
+
 static WORD system_language(int lang_id) {
   switch (lang_id) {
   case FP_LANG_ENGLISH:  return MAKELANGID(LANG_ENGLISH, SUBLANG_NEUTRAL);
@@ -46,12 +87,13 @@ void lang_init() {
   for (int lang = 0; lang < FP_LANG_COUNT; lang++) {
     for (int id = 0; id < FP_IDS_COUNT; id++) {
       string_table[lang][id] = "";
+      string_table_w[lang][id] = L"";
       string_names[id] = "";
     }
   }
 
-#define STR_ENGLISH(id, str) string_table[FP_LANG_ENGLISH][id] = utf8_to_local(str); string_names[id] = #id;
-#define STR_SCHINESE(id, str) string_table[FP_LANG_SCHINESE][id] = utf8_to_local(str);
+#define STR_ENGLISH(id, str) string_table[FP_LANG_ENGLISH][id] = utf8_to_local(str); string_table_w[FP_LANG_ENGLISH][id] = utf8_to_wide_owned(str); string_names[id] = #id;
+#define STR_SCHINESE(id, str) string_table[FP_LANG_SCHINESE][id] = utf8_to_local(str); string_table_w[FP_LANG_SCHINESE][id] = utf8_to_wide_owned(str);
 #include "language_strdef.h"
 #undef STR_ENGLISH
 #undef STR_SCHINESE
@@ -62,7 +104,11 @@ void lang_init() {
 
 // get default language
 int lang_get_default() {
-  LANGID id = LANGIDFROMLCID(GetThreadLocale());
+  int configured_language = config_get_ui_language();
+  if (configured_language != FP_LANG_AUTO)
+    return configured_language;
+
+  LANGID id = GetUserDefaultUILanguage();
   switch (PRIMARYLANGID(id)) {
   case LANG_ENGLISH:
     return FP_LANG_ENGLISH;
@@ -96,6 +142,13 @@ const char* lang_load_string(uint uid) {
   return "";
 }
 
+const wchar_t* lang_load_string_w(uint uid) {
+  if (uid < FP_IDS_COUNT) {
+    return string_table_w[lang_current][uid];
+  }
+  return L"";
+}
+
 // load lang string array
 const char* * lang_load_string_array(uint uid) {
   static char temp[1024];
@@ -127,6 +180,17 @@ int lang_format_string(char *buff, size_t size, uint strid, ...) {
   va_list args;
   va_start(args, strid);
   int result = _vsnprintf(buff, size, format, args);
+  va_end(args);
+  if (size > 0)
+    buff[size - 1] = 0;
+  return result;
+}
+
+int lang_format_string_w(wchar_t *buff, size_t size, uint strid, ...) {
+  const wchar_t *format = lang_load_string_w(strid);
+  va_list args;
+  va_start(args, strid);
+  int result = _vsnwprintf(buff, size, format, args);
   va_end(args);
   if (size > 0)
     buff[size - 1] = 0;
@@ -206,6 +270,11 @@ void lang_text_close() {
 
 // error message
 static char error_message[1024] = "Unknown error.";
+static wchar_t error_message_w[1024] = L"Unknown error.";
+
+static void sync_last_error_wide_from_narrow() {
+  MultiByteToWideChar(CP_ACP, 0, error_message, -1, error_message_w, ARRAYSIZE(error_message_w));
+}
 
 // set last error
 void lang_set_last_error(const char *format, ...) {
@@ -213,6 +282,7 @@ void lang_set_last_error(const char *format, ...) {
   va_start(args, format);
   vsnprintf_s(error_message, sizeof(error_message), _TRUNCATE, format, args);
   va_end(args);
+  sync_last_error_wide_from_narrow();
   fprintf(stderr, "last_error: %s\n", error_message);
 }
 
@@ -223,12 +293,17 @@ void lang_set_last_error(uint id, ...) {
   va_start(args, id);
   vsnprintf_s(error_message, sizeof(error_message), _TRUNCATE, format, args);
   va_end(args);
+  sync_last_error_wide_from_narrow();
   fprintf(stderr, "last_error: %s\n", error_message);
 }
 
 // get last error
 const char * lang_get_last_error() {
   return error_message;
+}
+
+const wchar_t * lang_get_last_error_w() {
+  return error_message_w;
 }
 
 

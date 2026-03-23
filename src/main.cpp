@@ -26,6 +26,9 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
     return 1;
   }
 
+  // preload persisted ui language before gui initialization
+  config_preload_ui_language("freepiano.cfg");
+
   // init language
   lang_init();
 

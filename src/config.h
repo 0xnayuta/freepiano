@@ -42,11 +42,20 @@ int config_init();
 // close config
 void config_shutdown();
 
+// preload only UI language from config before full initialization
+void config_preload_ui_language(const char *filename);
+
 // load
 int config_load(const char *filename);
 
 // save
 int config_save(const char *filename);
+
+// get persisted ui language, FP_LANG_AUTO means follow system
+int config_get_ui_language();
+
+// set persisted ui language
+void config_set_ui_language(int languageid);
 
 // get media path
 void config_get_media_path(char *buff, int buff_size, const char *path);

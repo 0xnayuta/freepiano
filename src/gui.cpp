@@ -2473,6 +2473,7 @@ bool gui_is_exporting() {
 
 // change language
 void gui_set_language(int lang) {
+  config_set_ui_language(lang);
   lang_set_current(lang);
   menu_init();
   DrawMenuBar(mainhwnd);

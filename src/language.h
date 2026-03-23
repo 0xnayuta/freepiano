@@ -25,14 +25,26 @@ void lang_set_current(int languageid);
 // get current language
 int lang_get_current();
 
+// get language code: auto / en / zh-CN
+const char* lang_get_code(int languageid);
+
+// parse language code, returns FP_LANG_AUTO for unknown/auto
+int lang_from_code(const char* code);
+
 // load str
 const char* lang_load_string(uint uid);
+
+// load wide str
+const wchar_t* lang_load_string_w(uint uid);
 
 // load lang string array
 const char** lang_load_string_array(uint uid);
 
 // format lang str
 int lang_format_string(char *buff, size_t size, uint strid, ...);
+
+// format wide lang str
+int lang_format_string_w(wchar_t *buff, size_t size, uint strid, ...);
 
 // open text
 int lang_text_open(uint textid);
@@ -51,6 +63,9 @@ void lang_set_last_error(uint id, ...);
 
 // get last error
 const char * lang_get_last_error();
+
+// get last error wide string
+const wchar_t * lang_get_last_error_w();
 
 // localize dialog
 void lang_localize_dialog(HWND hwnd);

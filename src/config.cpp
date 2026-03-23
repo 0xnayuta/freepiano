@@ -639,6 +639,8 @@ struct key_label_t {
 };
 
 struct global_setting_t {
+  char ui_language[16];
+
   uint instrument_type;
   char instrument_path[256];
   uint instrument_show_midi;
@@ -665,6 +667,8 @@ struct global_setting_t {
   std::map<std::string, midi_input_config_t> midi_inputs;
 
   global_setting_t() {
+    strcpy_s(ui_language, "auto");
+
     instrument_type = INSTRUMENT_TYPE_MIDI;
     instrument_path[0] = 0;
     instrument_show_midi = 1;
@@ -749,6 +753,43 @@ static uint map_language = FP_LANG_ENGLISH;
 static uint map_version = 0;
 static const uint map_current_version = APP_VERSION;
 
+int config_get_ui_language() {
+  thread_lock lock(config_lock);
+  return lang_from_code(global.ui_language);
+}
+
+void config_set_ui_language(int languageid) {
+  thread_lock lock(config_lock);
+  strcpy_s(global.ui_language, lang_get_code(languageid));
+}
+
+void config_preload_ui_language(const char *filename) {
+  thread_lock lock(config_lock);
+
+  char line[256];
+  config_get_media_path(line, sizeof(line), filename);
+
+  FILE *fp = fopen(line, "r");
+  if (!fp)
+    return;
+
+  while (fgets(line, sizeof(line), fp)) {
+    char *s = line;
+
+    if (*s == '#')
+      continue;
+
+    if (match_word(&s, "ui") && match_word(&s, "language")) {
+      char value[16] = {0};
+      if (match_line(&s, value, sizeof(value))) {
+        strcpy_s(global.ui_language, value);
+      }
+      break;
+    }
+  }
+
+  fclose(fp);
+}
 
 int config_bind_get_keydown(byte code, key_bind_t *buff, int size) {
   thread_lock lock(config_lock);
@@ -2309,6 +2350,14 @@ int config_load(const char *filename) {
         match_version(&s, &value);
         config_set_update_version(value);
       }
+      else if (match_word(&s, "ui")) {
+        if (match_word(&s, "language")) {
+          char value[16] = {0};
+          if (match_line(&s, value, sizeof(value))) {
+            strcpy_s(global.ui_language, value);
+          }
+        }
+      }
     }
 
     fclose(fp);
@@ -2399,6 +2448,10 @@ int config_save(const char *filename) {
     char buff[256];
     print_version(buff, sizeof(buff), config_get_update_version(), "");
     fprintf(fp, "update-version %s\r\n", buff);
+  }
+
+  if (_stricmp(global.ui_language, "auto") != 0) {
+    fprintf(fp, "ui language %s\r\n", global.ui_language);
   }
 
   fclose(fp);
