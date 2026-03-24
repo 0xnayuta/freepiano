@@ -9,6 +9,7 @@
 #include "config.h"
 #include "export.h"
 #include "output_wasapi.h"
+#include "fp_log.h"
 
 // global vst effect instance
 static AEffect *effect = NULL;
@@ -35,9 +36,40 @@ static uint effect_blocksize = 0;
 static bool effect_show_editor = true;
 static float *temp_output = NULL;
 
+static bool vst_narrow_to_wide_local(const char* text, wchar_t* wide_text, size_t wide_count) {
+  if (wide_text == NULL || wide_count == 0)
+    return false;
+
+  wide_text[0] = 0;
+  if (text == NULL || text[0] == 0)
+    return false;
+
+  if (0 == MultiByteToWideChar(CP_ACP, 0, text, -1, wide_text, static_cast<int>(wide_count))) {
+    fp_log_warn(L"VST narrow->wide conversion failed: %S", text);
+    return false;
+  }
+
+  return true;
+}
+
 // -----------------------------------------------------------------------------------------
 // vsti functions
 // -----------------------------------------------------------------------------------------
+
+#ifdef _DEBUG
+static void vst_debug_log(const char* fmt, ...) {
+  char buffer[2048];
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf_s(buffer, sizeof(buffer), _TRUNCATE, fmt, args);
+  va_end(args);
+  fp_log_info(L"VST: %S", buffer);
+}
+#else
+static void vst_debug_log(const char* fmt, ...) {
+  (void)fmt;
+}
+#endif
 static VstIntPtr VSTCALLBACK HostCallback(AEffect *effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void *ptr, float opt) {
   VstIntPtr result = 0;
 
@@ -60,11 +92,11 @@ static VstIntPtr VSTCALLBACK HostCallback(AEffect *effect, VstInt32 opcode, VstI
      break;
 
    case audioMasterProcessEvents:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterIOChanged:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case DECLARE_VST_DEPRECATED(audioMasterNeedIdle):
@@ -72,7 +104,7 @@ static VstIntPtr VSTCALLBACK HostCallback(AEffect *effect, VstInt32 opcode, VstI
      break;
 
    case audioMasterSizeWindow:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterGetSampleRate:
@@ -92,11 +124,11 @@ static VstIntPtr VSTCALLBACK HostCallback(AEffect *effect, VstInt32 opcode, VstI
      break;
 
    case audioMasterGetInputLatency:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterGetOutputLatency:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
 
@@ -109,27 +141,27 @@ static VstIntPtr VSTCALLBACK HostCallback(AEffect *effect, VstInt32 opcode, VstI
      break;
 
    case audioMasterGetAutomationState:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterOfflineStart:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterOfflineRead:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterOfflineWrite:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterOfflineGetCurrentPass:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterOfflineGetCurrentMetaPass:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterGetVendorString:
@@ -153,43 +185,43 @@ static VstIntPtr VSTCALLBACK HostCallback(AEffect *effect, VstInt32 opcode, VstI
      break;
 
    case audioMasterVendorSpecific:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterCanDo:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterGetLanguage:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterGetDirectory:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterUpdateDisplay:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterBeginEdit:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterEndEdit:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterOpenFileSelector:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    case audioMasterCloseFileSelector:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
 
    default:
-     printf("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
+     vst_debug_log("PLUG> HostCallback (opcode %d)\n index = %d, value = %p, ptr = %p, opt = %f\n", opcode, index, FromVstPtr<void>(value), ptr, opt);
      break;
   }
 
@@ -197,7 +229,7 @@ static VstIntPtr VSTCALLBACK HostCallback(AEffect *effect, VstInt32 opcode, VstI
 }
 
 void check_effect_properties(AEffect *effect) {
-  printf("HOST> Gathering properties...\n");
+  vst_debug_log("HOST> Gathering properties...\n");
 
   char effectName[256] = {0};
   char vendorString[256] = {0};
@@ -207,9 +239,9 @@ void check_effect_properties(AEffect *effect) {
   effect->dispatcher(effect, effGetVendorString, 0, 0, vendorString, 0);
   effect->dispatcher(effect, effGetProductString, 0, 0, productString, 0);
 
-  printf("Name = %s\nVendor = %s\nProduct = %s\n\n", effectName, vendorString, productString);
+  vst_debug_log("Name = %s\nVendor = %s\nProduct = %s\n\n", effectName, vendorString, productString);
 
-  printf("numPrograms = %d\nnumParams = %d\nnumInputs = %d\nnumOutputs = %d\n\n",
+  vst_debug_log("numPrograms = %d\nnumParams = %d\nnumInputs = %d\nnumOutputs = %d\n\n",
          effect->numPrograms, effect->numParams, effect->numInputs, effect->numOutputs);
 
   // Iterate programs...
@@ -219,10 +251,10 @@ void check_effect_properties(AEffect *effect) {
       effect->dispatcher(effect, effSetProgram, 0, progIndex, 0, 0);        // Note: old program not restored here!
       effect->dispatcher(effect, effGetProgramName, 0, 0, progName, 0);
     }
-    printf("Program %03d: %s\n", progIndex, progName);
+    vst_debug_log("Program %03d: %s\n", progIndex, progName);
   }
 
-  printf("\n");
+  vst_debug_log("\n");
 
   // Iterate parameters...
   for (VstInt32 paramIndex = 0; paramIndex < effect->numParams; paramIndex++) {
@@ -235,10 +267,10 @@ void check_effect_properties(AEffect *effect) {
     effect->dispatcher(effect, effGetParamDisplay, paramIndex, 0, paramDisplay, 0);
     float value = effect->getParameter(effect, paramIndex);
 
-    printf("Param %03d: %s [%s %s] (normalized = %f)\n", paramIndex, paramName, paramDisplay, paramLabel, value);
+    vst_debug_log("Param %03d: %s [%s %s] (normalized = %f)\n", paramIndex, paramName, paramDisplay, paramLabel, value);
   }
 
-  printf("\n");
+  vst_debug_log("\n");
 
   // Can-do nonsense...
   static const char *canDos[] = {
@@ -248,18 +280,18 @@ void check_effect_properties(AEffect *effect) {
   };
 
   for (VstInt32 canDoIndex = 0; canDoIndex < sizeof (canDos) / sizeof (canDos[0]); canDoIndex++) {
-    printf("Can do %s... ", canDos[canDoIndex]);
+    vst_debug_log("Can do %s... ", canDos[canDoIndex]);
     VstInt32 result = (VstInt32)effect->dispatcher(effect, effCanDo, 0, 0, (void *)canDos[canDoIndex], 0);
     switch (result) {
-     case 0: printf("don't know"); break;
-     case 1: printf("yes"); break;
-     case -1: printf("definitely not!"); break;
-     default: printf("?????");
+     case 0: vst_debug_log("don't know"); break;
+     case 1: vst_debug_log("yes"); break;
+     case -1: vst_debug_log("definitely not!"); break;
+     default: vst_debug_log("?????");
     }
-    printf("\n");
+    vst_debug_log("\n");
   }
 
-  printf("\n");
+  vst_debug_log("\n");
 }
 
 // load plugin
@@ -519,9 +551,12 @@ static HWND create_effect_window(AEffect *effect) {
   char effectName[256] = {0};
   effect->dispatcher(effect, effGetEffectName, 0, 0, effectName, 0);
 
-  // Convert effect name from ANSI to wide string
+  // Legacy VST boundary: effect name is still exposed as narrow text by the plugin API.
   wchar_t effectNameW[256] = {0};
-  MultiByteToWideChar(CP_ACP, 0, effectName, -1, effectNameW, ARRAYSIZE(effectNameW));
+  if (!vst_narrow_to_wide_local(effectName, effectNameW, ARRAYSIZE(effectNameW))) {
+    fp_log_warn(L"VST effect window is using default title fallback");
+    wcscpy_s(effectNameW, L"VST Instrument");
+  }
 
   // create window
   HWND hwnd = CreateWindowW(L"FreePianoVstEffect", effectNameW, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, NULL, NULL, GetModuleHandle(NULL), NULL);

@@ -4,6 +4,7 @@
 #include "display.h"
 #include "song.h"
 #include "config.h"
+#include "fp_log.h"
 
 #include <map>
 #include <string>
@@ -286,7 +287,7 @@ void midi_output_event(byte a, byte b, byte c, byte d) {
 
   // debug print
 #ifdef _DEBUG
-  fprintf(stdout, "MIDI OUT: %04x %02x %02x %02x %02x\n", GetTickCount(), a, b, c, d);
+  fp_log_info(L"MIDI OUT: %04x %02x %02x %02x %02x", GetTickCount(), a, b, c, d);
 #endif
 
   // send midi event to vst plugin

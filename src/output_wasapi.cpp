@@ -9,6 +9,7 @@
 #include "synthesizer_vst.h"
 #include "display.h"
 #include "song.h"
+#include "fp_log.h"
 #include "config.h"
 #include "export.h"
 
@@ -165,7 +166,7 @@ int wasapi_open(const char *name) {
 
     // get default device
     if (FAILED(hr = enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device))) {
-      fprintf(stderr, "WASAPI: Failed to get default endpoint. name=%s, hr=%x\n", name, hr);
+      fp_log_error(L"WASAPI: failed to get default endpoint. name=%S hr=0x%08x", name, static_cast<unsigned int>(hr));
       goto error;
     }
   }
@@ -178,13 +179,13 @@ int wasapi_open(const char *name) {
 
   // activate
   if (FAILED(hr = device->Activate(IID_IAudioClient, CLSCTX_ALL, NULL, (void **)&client))) {
-    fprintf(stderr, "WASAPI: Failed to active audio client. name=%s, hr=%x\n", name, hr);
+    fp_log_error(L"WASAPI: failed to activate audio client. name=%S hr=0x%08x", name, static_cast<unsigned int>(hr));
     goto error;
   }
 
   // get mix format
   if (FAILED(hr = client->GetMixFormat(&pwfx))) {
-    fprintf(stderr, "WASAPI: Failed to get mix format. name=%s, hr=%x\n", name, hr);
+    fp_log_error(L"WASAPI: failed to get mix format. name=%S hr=0x%08x", name, static_cast<unsigned int>(hr));
     goto error;
   }
 
@@ -196,7 +197,7 @@ int wasapi_open(const char *name) {
         supported = true;
       }
     }
-    fprintf(stdout, "WASAPI: name=%s, format={%08lx, %04x, %04x, %02x%02x%02x%02x%02x%02x%02x%02x}, bits=%d, samplerate=%d\n", 
+    fp_log_info(L"WASAPI format: name=%S subtype={%08lx,%04x,%04x,%02x%02x%02x%02x%02x%02x%02x%02x} bits=%d samplerate=%d",
       name,
       static_cast<unsigned long>(format->SubFormat.Data1),
       static_cast<unsigned int>(format->SubFormat.Data2),
@@ -213,19 +214,19 @@ int wasapi_open(const char *name) {
   }
 
   if (!supported) {
-    fprintf(stderr, "WASAPI: current mix format is not supported. name=%s\n", name);
+    fp_log_error(L"WASAPI: current mix format is not supported. name=%S", name);
     goto error;
   }
 
   // initialize
   if (FAILED(hr = client->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, hnsRequestedDuration, 0, pwfx, NULL))) {
-    fprintf(stderr, "WASAPI: Failed to initialize audio client. name=%s, hr=%x\n", name, hr);
+    fp_log_error(L"WASAPI: failed to initialize audio client. name=%S hr=0x%08x", name, static_cast<unsigned int>(hr));
     goto error;
   }
 
   // get render client
   if (FAILED(hr = client->GetService(IID_IAudioRenderClient, (void **)&render_client))) {
-    fprintf(stderr, "WASAPI: Failed to get render client. name=%s, hr=%x\n", name, hr);
+    fp_log_error(L"WASAPI: failed to get render client. name=%S hr=0x%08x", name, static_cast<unsigned int>(hr));
     goto error;
   }
 

@@ -16,6 +16,7 @@
 #include "language.h"
 #include "export_mp4.h"
 #include "export_wav.h"
+#include "fp_log.h"
 #include "../res/resource.h"
 
 #pragma comment(lib, "Shlwapi.lib")
@@ -39,6 +40,107 @@ static void try_open_song(int err) {
   }
 }
 
+static bool narrow_to_wide_local_path(const char* text, wchar_t* wide_text, size_t wide_count) {
+  if (wide_text == NULL || wide_count == 0)
+    return false;
+
+  wide_text[0] = 0;
+  if (text == NULL || text[0] == 0)
+    return false;
+
+  const int result = MultiByteToWideChar(CP_ACP, 0, text, -1, wide_text, static_cast<int>(wide_count));
+  if (result <= 0) {
+    fp_log_warn(L"ACP->Wide path conversion failed: %S", text);
+    return false;
+  }
+
+  return true;
+}
+
+static bool wide_to_narrow_local_path(const wchar_t* wide_text, char* text, size_t text_size) {
+  if (text == NULL || text_size == 0)
+    return false;
+
+  text[0] = 0;
+  if (wide_text == NULL || wide_text[0] == 0)
+    return false;
+
+  const int result = WideCharToMultiByte(CP_ACP, 0, wide_text, -1, text, static_cast<int>(text_size), NULL, NULL);
+  if (result <= 0) {
+    fp_log_warn(L"Wide->ACP path conversion failed: %ls", wide_text);
+    return false;
+  }
+
+  return true;
+}
+
+static bool decode_text_codepage(UINT codepage, const char *text, wchar_t* wide_text, size_t wide_count, const wchar_t* context) {
+  if (wide_text == NULL || wide_count == 0)
+    return false;
+
+  wide_text[0] = 0;
+  if (text == NULL)
+    return false;
+
+  const int length = MultiByteToWideChar(codepage, 0, text, -1, wide_text, static_cast<int>(wide_count));
+  if (length > 0)
+    return true;
+
+  fp_log_warn(L"%ls conversion failed: codepage=%u text=%S", context ? context : L"Text", codepage, text);
+  return false;
+}
+
+static bool decode_menu_text(UINT codepage, const char *text, wchar_t* wide_text, size_t wide_count) {
+  return decode_text_codepage(codepage, text, wide_text, wide_count, L"Menu text");
+}
+
+static void set_window_text_local_codepage(HWND hwnd, const char* text, UINT codepage) {
+  if (hwnd == NULL)
+    return;
+
+  wchar_t wide_text[4096];
+  if (decode_text_codepage(codepage, text ? text : "", wide_text, ARRAYSIZE(wide_text), L"Window text")) {
+    SetWindowTextW(hwnd, wide_text);
+  }
+  else {
+    SetWindowTextW(hwnd, L"");
+  }
+}
+
+static void set_window_text_local(HWND hwnd, const char* text) {
+  set_window_text_local_codepage(hwnd, text, CP_ACP);
+}
+
+static void set_dlg_item_text_local(HWND hwnd, int itemid, const char* text) {
+  set_window_text_local(GetDlgItem(hwnd, itemid), text);
+}
+
+static int get_window_text_local(HWND hwnd, char* text, size_t text_size) {
+  if (text == NULL || text_size == 0)
+    return 0;
+
+  text[0] = 0;
+  if (hwnd == NULL)
+    return 0;
+
+  wchar_t wide_text[4096] = {0};
+  const int wide_len = GetWindowTextW(hwnd, wide_text, ARRAYSIZE(wide_text));
+  if (wide_len <= 0)
+    return 0;
+
+  if (!wide_to_narrow_local_path(wide_text, text, text_size)) {
+    fp_log_warn(L"Window text cannot be represented in ACP");
+    text[0] = 0;
+    return 0;
+  }
+
+  return static_cast<int>(strlen(text));
+}
+
+static int get_dlg_item_text_local(HWND hwnd, int itemid, char* text, size_t text_size) {
+  return get_window_text_local(GetDlgItem(hwnd, itemid), text, text_size);
+}
+
 static bool open_dialog(char *buff, size_t size, const wchar_t* filters, const char* init_dir = NULL) {
   wchar_t wbuff[260] = {0};
   wchar_t wdir[260] = {0};
@@ -59,13 +161,17 @@ static bool open_dialog(char *buff, size_t size, const wchar_t* filters, const c
     char dir[260] = {0};
     config_get_media_path(dir, sizeof(dir), init_dir);
     PathRemoveFileSpecA(dir);
-    MultiByteToWideChar(CP_ACP, 0, dir, -1, wdir, ARRAYSIZE(wdir));
-    ofn.lpstrInitialDir = wdir;
+    if (narrow_to_wide_local_path(dir, wdir, ARRAYSIZE(wdir))) {
+      ofn.lpstrInitialDir = wdir;
+    }
   }
 
   bool result = GetOpenFileNameW(&ofn) != 0;
   if (result && wbuff[0]) {
-    WideCharToMultiByte(CP_ACP, 0, wbuff, -1, buff, static_cast<int>(size), NULL, NULL);
+    if (!wide_to_narrow_local_path(wbuff, buff, size)) {
+      fp_log_error(L"Open dialog returned a path that cannot be represented in ACP");
+      return false;
+    }
   }
   return result;
 }
@@ -90,13 +196,17 @@ static bool save_dialog(char *buff, size_t size, const wchar_t *filters, const c
     char dir[260] = {0};
     config_get_media_path(dir, sizeof(dir), init_dir);
     PathRemoveFileSpecA(dir);
-    MultiByteToWideChar(CP_ACP, 0, dir, -1, wdir, ARRAYSIZE(wdir));
-    ofn.lpstrInitialDir = wdir;
+    if (narrow_to_wide_local_path(dir, wdir, ARRAYSIZE(wdir))) {
+      ofn.lpstrInitialDir = wdir;
+    }
   }
 
   bool result = GetSaveFileNameW(&ofn) != 0;
   if (result && wbuff[0]) {
-    WideCharToMultiByte(CP_ACP, 0, wbuff, -1, buff, static_cast<int>(size), NULL, NULL);
+    if (!wide_to_narrow_local_path(wbuff, buff, size)) {
+      fp_log_error(L"Save dialog returned a path that cannot be represented in ACP");
+      return false;
+    }
   }
   return result;
 }
@@ -106,11 +216,10 @@ static BOOL append_menu_text_codepage(HMENU menu, UINT flags, UINT_PTR item_id, 
     return AppendMenuW(menu, flags, item_id, NULL);
 
   wchar_t wide_text[4096];
-  int length = MultiByteToWideChar(codepage, 0, text, -1, wide_text, ARRAY_COUNT(wide_text));
-  if (length > 0)
+  if (decode_menu_text(codepage, text, wide_text, ARRAY_COUNT(wide_text)))
     return AppendMenuW(menu, flags, item_id, wide_text);
 
-  return AppendMenuA(menu, flags, item_id, text);
+  return AppendMenuW(menu, flags, item_id, L"");
 }
 
 static BOOL append_menu_text(HMENU menu, UINT flags, UINT_PTR item_id, const char *text) {
@@ -172,11 +281,10 @@ static int combobox_add_string_a(HWND combo, const char *text) {
     text = "";
 
   wchar_t wide_text[4096];
-  int length = MultiByteToWideChar(CP_ACP, 0, text, -1, wide_text, ARRAYSIZE(wide_text));
-  if (length > 0)
+  if (decode_text_codepage(CP_ACP, text, wide_text, ARRAYSIZE(wide_text), L"ComboBox text"))
     return static_cast<int>(SendMessageW(combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(wide_text)));
 
-  return static_cast<int>(SendMessageA(combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(text)));
+  return static_cast<int>(SendMessageW(combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"")));
 }
 
 static int combobox_add_string_w(HWND combo, const wchar_t *text) {
@@ -217,7 +325,7 @@ static LRESULT CALLBACK NumericEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPA
         if (dwRefData) {
           int value = 0;
           char temp[256];
-          GetWindowTextA(hWnd, temp, sizeof(temp));
+          get_window_text_local(hWnd, temp, sizeof(temp));
 
           if (sscanf(temp, (const char*)dwRefData, &value) == 1)
             PostMessage(parent, WM_COMMAND, MAKEWPARAM(id, EN_VALUE_VALID), static_cast<LPARAM>(value));
@@ -237,7 +345,7 @@ static LRESULT CALLBACK NumericEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPA
 
 static void update_numeric_edit(HWND hwnd, int itemid, const char *value, const char* format) {
   HWND edit = GetDlgItem(hwnd, itemid);
-  SetWindowTextA(edit, value);
+  set_window_text_local(edit, value);
   SetWindowSubclass(edit, NumericEditProc, 0, reinterpret_cast<DWORD_PTR>(format));
 }
 
@@ -547,7 +655,9 @@ static INT_PTR CALLBACK settings_audio_proc(HWND hWnd, UINT uMsg, WPARAM wParam,
       if (config_get_output_type() == OUTPUT_TYPE_AUTO) {
         wchar_t wbuff[256];
         wchar_t type_w[64];
-        MultiByteToWideChar(CP_ACP, 0, output_types[config_get_current_output_type()], -1, type_w, ARRAYSIZE(type_w));
+        if (!decode_text_codepage(CP_ACP, output_types[config_get_current_output_type()], type_w, ARRAYSIZE(type_w), L"Audio output type")) {
+          wcscpy_s(type_w, L"?");
+        }
         swprintf_s(wbuff, L"%s: %s", lang_load_string_w(IDS_SETTING_AUDIO_AUTO), type_w);
         combobox_add_string_w(output_list, wbuff);
       }
@@ -577,10 +687,10 @@ static INT_PTR CALLBACK settings_audio_proc(HWND hWnd, UINT uMsg, WPARAM wParam,
        if (HIWORD(wParam) == CBN_SELCHANGE) {
          int result = 1;
          char temp[256];
-         GetDlgItemTextA(hWnd, IDC_OUTPUT_LIST, temp, sizeof(temp));
+         get_dlg_item_text_local(hWnd, IDC_OUTPUT_LIST, temp, sizeof(temp));
 
          for (int i = 0; i < ARRAY_COUNT(output_types); i++) {
-           int len = strlen(output_types[i]);
+           int len = static_cast<int>(strlen(output_types[i]));
            if (_strnicmp(output_types[i], temp, len) == 0) {
              result = config_select_output(i, temp + len + 2);
              break;
@@ -615,7 +725,7 @@ static INT_PTR CALLBACK settings_audio_proc(HWND hWnd, UINT uMsg, WPARAM wParam,
      else if (LOWORD(wParam) == IDC_PLAYBACK_SPEED) {
        if (HIWORD(wParam) == EN_VALUE_VALID) {
          char temp[64];
-         GetDlgItemTextA(hWnd, IDC_PLAYBACK_SPEED, temp, sizeof(temp));
+         get_dlg_item_text_local(hWnd, IDC_PLAYBACK_SPEED, temp, sizeof(temp));
          song_set_play_speed(atof(temp));
          helpers::refresh_play_speed(hWnd);
        }
@@ -813,7 +923,7 @@ static INT_PTR CALLBACK settings_play_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
       {
         if (HIWORD(wParam) == CBN_SELCHANGE) {
           char temp[256];
-          GetDlgItemTextA(hWnd, IDC_PLAY_OCTAVE1 + id, temp, sizeof(temp));
+          get_dlg_item_text_local(hWnd, IDC_PLAY_OCTAVE1 + id, temp, sizeof(temp));
           int value = atoi(temp);
           song_send_event(SM_OCTAVE, channel, SM_VALUE_SET, (char)value, true);
           refresh = true;
@@ -824,7 +934,7 @@ static INT_PTR CALLBACK settings_play_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
       {
         if (HIWORD(wParam) == CBN_SELCHANGE) {
           char temp[256];
-          GetDlgItemTextA(hWnd, IDC_PLAY_CHANNEL1 + id, temp, sizeof(temp));
+          get_dlg_item_text_local(hWnd, IDC_PLAY_CHANNEL1 + id, temp, sizeof(temp));
           int value = atoi(temp);
           song_send_event(SM_CHANNEL, channel, SM_VALUE_SET, value, true);
           refresh = true;
@@ -909,7 +1019,7 @@ static INT_PTR CALLBACK settings_keymap_proc(HWND hWnd, UINT uMsg, WPARAM wParam
 
       LockWindowUpdate(edit);
       int scroll = GetScrollPos(edit, SB_VERT);
-      SetWindowTextA(edit, buff);
+      set_window_text_local(edit, buff);
       Edit_Scroll(edit, scroll, 0);
       LockWindowUpdate(NULL);
 
@@ -920,7 +1030,7 @@ static INT_PTR CALLBACK settings_keymap_proc(HWND hWnd, UINT uMsg, WPARAM wParam
       uint buff_size = Edit_GetTextLength(edit) + 1;
       char *buff = (char*)malloc(buff_size);
 
-      GetWindowTextA(edit, buff, buff_size);
+      get_window_text_local(edit, buff, buff_size);
       config_parse_keymap(buff);
 
       free(buff);
@@ -1230,16 +1340,18 @@ static INT_PTR CALLBACK song_info_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
      lang_localize_dialog(hWnd);
 
      song_info_t *info = song_get_info();
-     SetDlgItemTextA(hWnd, IDC_SONG_TITLE, info->title);
-     SetDlgItemTextA(hWnd, IDC_SONG_AUTHOR, info->author);
+     set_dlg_item_text_local(hWnd, IDC_SONG_TITLE, info->title);
+     set_dlg_item_text_local(hWnd, IDC_SONG_AUTHOR, info->author);
 
      if (info->compatibility) {
-       SetDlgItemTextA(hWnd, IDC_SONG_COMMENT, info->comment);
+       set_dlg_item_text_local(hWnd, IDC_SONG_COMMENT, info->comment);
      }
      else {
        wchar_t wbuff[1024];
-       wchar_t comment_w[512];
-       MultiByteToWideChar(CP_ACP, 0, info->comment, -1, comment_w, ARRAYSIZE(comment_w));
+       wchar_t comment_w[512] = {0};
+       if (!decode_text_codepage(CP_ACP, info->comment, comment_w, ARRAYSIZE(comment_w), L"Song comment")) {
+         wcscpy_s(comment_w, L"");
+       }
        swprintf_s(wbuff, L"%s\r\n\r\n%s", lang_load_string_w(IDS_SONG_INFO_COMPATIBITY), comment_w);
        SetDlgItemTextW(hWnd, IDC_SONG_COMMENT, wbuff);
      }
@@ -1251,9 +1363,9 @@ static INT_PTR CALLBACK song_info_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
       case IDOK: {
         song_info_t *info = song_get_info();
         if (song_allow_save()) {
-          GetDlgItemTextA(hWnd, IDC_SONG_TITLE, info->title, sizeof(info->title));
-          GetDlgItemTextA(hWnd, IDC_SONG_AUTHOR, info->author, sizeof(info->author));
-          GetDlgItemTextA(hWnd, IDC_SONG_COMMENT, info->comment, sizeof(info->comment));
+          get_dlg_item_text_local(hWnd, IDC_SONG_TITLE, info->title, sizeof(info->title));
+          get_dlg_item_text_local(hWnd, IDC_SONG_AUTHOR, info->author, sizeof(info->author));
+          get_dlg_item_text_local(hWnd, IDC_SONG_COMMENT, info->comment, sizeof(info->comment));
         }
         EndDialog(hWnd, 1);
       }
@@ -1924,7 +2036,7 @@ static INT_PTR CALLBACK key_setting_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
         HWND edit = GetDlgItem(hWnd, IDC_KEY_SCRIPT);
         uint tabstops = 46;
         Edit_SetTabStops(edit, 1, &tabstops);
-        SetWindowTextA(edit, buff);
+        set_window_text_local(edit, buff);
         Edit_SetSel(edit, -2, -1);
         free(buff);
       }
@@ -1978,23 +2090,23 @@ static INT_PTR CALLBACK key_setting_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
      switch (config_get_note_display()) {
      case NOTE_DISPLAY_DOH:
        for (int i = 0; i < 12; i++)
-         SetDlgItemTextA(hWnd, IDC_KEY_SETTING_NOTE_1 + i, note_display_doh[i]);
+         set_dlg_item_text_local(hWnd, IDC_KEY_SETTING_NOTE_1 + i, note_display_doh[i]);
        for (int i = 0; i < 9; i++)
-         SetDlgItemTextA(hWnd, IDC_KEY_SETTING_OCTAVE_0 + i, note_octave_doh[i]);
+         set_dlg_item_text_local(hWnd, IDC_KEY_SETTING_OCTAVE_0 + i, note_octave_doh[i]);
        break;
 
      case NOTE_DIAPLAY_FIXED_DOH:
        for (int i = 0; i < 12; i++)
-         SetDlgItemTextA(hWnd, IDC_KEY_SETTING_NOTE_1 + i, note_display_doh[(i + config_get_key_signature()) % 12]);
+         set_dlg_item_text_local(hWnd, IDC_KEY_SETTING_NOTE_1 + i, note_display_doh[(i + config_get_key_signature()) % 12]);
        for (int i = 0; i < 9; i++)
-         SetDlgItemTextA(hWnd, IDC_KEY_SETTING_OCTAVE_0 + i, note_octave_doh[i]);
+         set_dlg_item_text_local(hWnd, IDC_KEY_SETTING_OCTAVE_0 + i, note_octave_doh[i]);
        break;
 
      case NOTE_DISPLAY_NAME:
        for (int i = 0; i < 12; i++)
-         SetDlgItemTextA(hWnd, IDC_KEY_SETTING_NOTE_1 + i, note_display_name[(i + config_get_key_signature()) % 12]);
+         set_dlg_item_text_local(hWnd, IDC_KEY_SETTING_NOTE_1 + i, note_display_name[(i + config_get_key_signature()) % 12]);
        for (int i = 0; i < 9; i++)
-         SetDlgItemTextA(hWnd, IDC_KEY_SETTING_OCTAVE_0 + i, note_octave_name[i]);
+         set_dlg_item_text_local(hWnd, IDC_KEY_SETTING_OCTAVE_0 + i, note_octave_name[i]);
        break;
      }
 
@@ -2107,7 +2219,7 @@ static INT_PTR CALLBACK key_setting_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
          HWND edit = GetDlgItem(hWnd, IDC_KEY_SCRIPT);
          uint buff_size = Edit_GetTextLength(edit) + 1;
          char *buff = (char*)malloc(buff_size);
-         GetWindowTextA(edit, buff, buff_size);
+         get_window_text_local(edit, buff, buff_size);
          config_parse_keymap(buff, selected_key, -1);
          free(buff);
 
@@ -2456,7 +2568,7 @@ int gui_init() {
 #endif
 
   if (mainhwnd == NULL) {
-    fprintf(stderr, "failed to create window");
+    fp_log_error(L"Failed to create main window");
     return -1;
   }
 
@@ -2556,17 +2668,38 @@ bool gui_is_exporting() {
   return export_hwnd != NULL;
 }
 
+// refresh all visible UI texts after language changes
+void gui_refresh_all_texts() {
+  if (mainhwnd) {
+    SetWindowTextW(mainhwnd, APP_NAME_W);
+  }
+
+  menu_init();
+
+  if (mainhwnd) {
+    DrawMenuBar(mainhwnd);
+    InvalidateRect(mainhwnd, NULL, FALSE);
+    UpdateWindow(mainhwnd);
+  }
+
+  display_force_refresh();
+
+  if (setting_hwnd) {
+    fp_log_info(L"Refreshing settings window after language change");
+    DestroyWindow(setting_hwnd);
+  }
+
+  if (key_setting_window) {
+    fp_log_info(L"Refreshing key setting window after language change");
+    DestroyWindow(key_setting_window);
+  }
+}
+
 // change language
 void gui_set_language(int lang) {
   config_set_ui_language(lang);
   lang_set_current(lang);
-  menu_init();
-  DrawMenuBar(mainhwnd);
-  display_force_refresh();
-
-  if (setting_hwnd) {
-    ::DestroyWindow(setting_hwnd);
-  }
+  gui_refresh_all_texts();
 }
 
 // notify update

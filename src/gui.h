@@ -36,6 +36,9 @@ void gui_close_export_progress();
 // is exporting
 bool gui_is_exporting();
 
+// refresh all visible UI texts after language changes
+void gui_refresh_all_texts();
+
 // set language
 void gui_set_language(int lang);
 

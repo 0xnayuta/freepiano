@@ -6,6 +6,7 @@
 #include "asio/iasiodrv.h"
 #include "asio/asiodrivers.h"
 #include "output_asio.h"
+#include "fp_log.h"
 #include "keyboard.h"
 #include "synthesizer_vst.h"
 #include "song.h"
@@ -65,6 +66,38 @@ typedef struct DriverInfo {
 static DriverInfo driver_info = {0};
 static ASIOCallbacks callbacks;
 
+static bool asio_narrow_to_wide_local(const char* text, wchar_t* wide_text, size_t wide_count) {
+  if (wide_text == NULL || wide_count == 0)
+    return false;
+
+  wide_text[0] = 0;
+  if (text == NULL || text[0] == 0)
+    return false;
+
+  if (0 == MultiByteToWideChar(CP_ACP, 0, text, -1, wide_text, static_cast<int>(wide_count))) {
+    fp_log_warn(L"ASIO narrow->wide conversion failed: %S", text);
+    return false;
+  }
+
+  return true;
+}
+
+static bool asio_wide_to_narrow_local(const wchar_t* wide_text, char* text, size_t text_size) {
+  if (text == NULL || text_size == 0)
+    return false;
+
+  text[0] = 0;
+  if (wide_text == NULL || wide_text[0] == 0)
+    return false;
+
+  if (0 == WideCharToMultiByte(CP_ACP, 0, wide_text, -1, text, static_cast<int>(text_size), NULL, NULL)) {
+    fp_log_warn(L"ASIO wide->narrow conversion failed: %ls", wide_text);
+    return false;
+  }
+
+  return true;
+}
+
 // close driver
 static void close_driver() {
 #if 0
@@ -100,8 +133,11 @@ static int open_driver(const char *name) {
 #endif
   extern bool loadAsioDriver(const TCHAR *name);
 #ifdef UNICODE
+  // Legacy ASIO boundary: third-party driver enumeration still provides narrow names.
   wchar_t wide_name[64] = {0};
-  MultiByteToWideChar(CP_ACP, 0, name ? name : "", -1, wide_name, ARRAY_COUNT(wide_name));
+  if (!asio_narrow_to_wide_local(name ? name : "", wide_name, ARRAY_COUNT(wide_name))) {
+    fp_log_warn(L"ASIO driver load is using empty fallback driver name");
+  }
   return !loadAsioDriver(wide_name);
 #else
   return !loadAsioDriver(name);
@@ -487,8 +523,11 @@ void asio_enum_device(asio_enum_callback &callback) {
   for (int i = 0; i < driver_list.numdrv; i++) {
     if (drv) {
 #ifdef UNICODE
+      // Legacy compatibility: callback interface still exposes narrow device names.
       char name[MAXDRVNAMELEN * 4] = {0};
-      WideCharToMultiByte(CP_ACP, 0, drv->drvname, -1, name, sizeof(name), NULL, NULL);
+      if (!asio_wide_to_narrow_local(drv->drvname, name, sizeof(name))) {
+        fp_log_warn(L"ASIO device enumeration is using empty fallback device name");
+      }
       callback(name);
 #else
       callback(drv->drvname);

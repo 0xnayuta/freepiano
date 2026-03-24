@@ -5,6 +5,16 @@
 // Enable JSON-based translations (comment out to use hardcoded strings)
 #define USE_JSON_TRANSLATIONS 1
 
+// Debug helper levels:
+// 1) I18N_DEBUG_SHOW_KEY:
+//    when a translation is missing everywhere (current/en/hardcoded), show [IDS_XXX].
+// 2) I18N_DEBUG_SHOW_FALLBACK:
+//    when current language falls back to English or hardcoded text, append a marker.
+//
+// Uncomment as needed during debugging:
+// #define I18N_DEBUG_SHOW_KEY 1
+// #define I18N_DEBUG_SHOW_FALLBACK 1
+
 #ifndef DIRECTINPUT_VERSION
 #define DIRECTINPUT_VERSION         0x0800
 #endif

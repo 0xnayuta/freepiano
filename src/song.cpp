@@ -8,6 +8,7 @@
 #include "gui.h"
 #include "language.h"
 #include "utilities.h"
+#include "fp_log.h"
 
 #include <dinput.h>
 #include <Shlwapi.h>
@@ -882,7 +883,7 @@ void song_start_record() {
 
       if (*config_bind_get_label(i)) {
         const char *label = config_bind_get_label(i);
-        int size = strlen(label);
+        int size = static_cast<int>(strlen(label));
 
         song_add_event(0, SM_SYSTEM, SMS_KEY_LABEL, i, size);
 
@@ -1071,14 +1072,14 @@ void song_trigger_sync(uint flags) {
 // -----------------------------------------------------------------------------------------
 
 static void read(void *buff, int size, FILE *fp) {
-  int ret = fread(buff, 1, size, fp);
-  if (ret != size)
+  size_t ret = fread(buff, 1, size, fp);
+  if (ret != static_cast<size_t>(size))
     throw -1;
 }
 
 static void write(const void *buff, int size, FILE *fp) {
-  int ret = fwrite(buff, 1, size, fp);
-  if (ret != size)
+  size_t ret = fwrite(buff, 1, size, fp);
+  if (ret != static_cast<size_t>(size))
     throw -1;
 }
 
@@ -1096,7 +1097,7 @@ static void read_string(char *buff, size_t buff_size, FILE *fp) {
 }
 
 static void write_string(const char *buff, FILE *fp) {
-  uint count = strlen(buff);
+  uint count = static_cast<uint>(strlen(buff));
 
   write(&count, sizeof(count), fp);
   write(buff, count, fp);
@@ -1107,7 +1108,7 @@ static void read_idp_string(char *buff, size_t buff_size, FILE *fp) {
   read(&count, sizeof(count), fp);
 
   if (count < buff_size) {
-    read(buff, buff_size, fp);
+    read(buff, count, fp);
     buff[count] = 0;
   } else   {
     throw -1;
@@ -1347,7 +1348,7 @@ int song_open_lyt(const char *filename) {
        case 18:    break;      // drum
        case 19:    break;      // maybe song end.
        default:
-         printf("unknown type : %d\t%d\t%d\n", time, type, key);
+         fp_log_warn(L"Song loader: unknown event type. time=%d type=%d key=%d", time, type, key);
       }
     }
 
@@ -1556,7 +1557,7 @@ int song_save(const char *filename) {
       uint temp_size = sizeof(song_event_buffer);
       byte *temp_buffer = new byte[temp_size];
 
-      compress((Bytef *)temp_buffer, (uLongf *)&temp_size, (byte *)song_event_buffer, (song_end - song_event_buffer) * sizeof(song_event_t));
+      compress((Bytef *)temp_buffer, (uLongf *)&temp_size, (byte *)song_event_buffer, static_cast<uLong>((song_end - song_event_buffer) * sizeof(song_event_t)));
 
       write(&temp_size, sizeof(temp_size), fp);
       write(temp_buffer, temp_size, fp);

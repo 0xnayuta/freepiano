@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "json_loader.h"
+#include "fp_log.h"
 
 JsonLoader::Tokenizer::Tokenizer(const char* json, size_t len)
   : json_(json), length_(len), pos_(0), line_(1), error_(nullptr) {
@@ -321,7 +322,10 @@ bool JsonLoader::parse_object(Tokenizer& tokenizer, StringMap& out) {
 bool JsonLoader::parse_file(const char* filepath, StringMap& out_strings) {
   FILE* file = nullptr;
   fopen_s(&file, filepath, "rb");
-  if (!file) return false;
+  if (!file) {
+    fp_log_warn(L"JSON open failed: %S", filepath ? filepath : "<null>");
+    return false;
+  }
 
   // Get file size
   fseek(file, 0, SEEK_END);
@@ -331,6 +335,7 @@ bool JsonLoader::parse_file(const char* filepath, StringMap& out_strings) {
   // Handle empty file
   if (size <= 0) {
     fclose(file);
+    fp_log_warn(L"JSON file is empty: %S", filepath ? filepath : "<null>");
     return false;
   }
 
@@ -340,6 +345,7 @@ bool JsonLoader::parse_file(const char* filepath, StringMap& out_strings) {
   fclose(file);
 
   if (bytes_read != static_cast<size_t>(size)) {
+    fp_log_error(L"JSON read failed: %S", filepath ? filepath : "<null>");
     return false;
   }
 
@@ -350,10 +356,11 @@ bool JsonLoader::parse_memory(const char* json_content, size_t length, StringMap
   Tokenizer tokenizer(json_content, length);
 
   if (!parse_object(tokenizer, out_strings)) {
-    // Return false but don't clear output - might have partial data
     if (tokenizer.get_error()) {
-      fprintf(stderr, "JSON parse error at line %d: %s\n",
-              tokenizer.get_line(), tokenizer.get_error());
+      fp_log_error(L"JSON parse error at line %d: %S", tokenizer.get_line(), tokenizer.get_error());
+    }
+    else {
+      fp_log_error(L"JSON parse failed near line %d", tokenizer.get_line());
     }
     return false;
   }

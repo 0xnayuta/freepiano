@@ -26,6 +26,7 @@
 #include "../res/resource.h"
 #include "language.h"
 #include "utilities.h"
+#include "fp_log.h"
 
 
 // directX device handle.
@@ -283,7 +284,7 @@ static void preload_characters(const wchar_t *text, int len, int size) {
   bool retry = true;
 
   if (len <= 0)
-    len = wcslen(text);
+    len = static_cast<int>(wcslen(text));
 
   for (int i = 0; i < len; i++) {
     font_character_t cache;
@@ -381,7 +382,7 @@ static void preload_characters(const wchar_t *text, int len, int size) {
 // build string vertex
 static int build_string_vertex(const wchar_t *text, int len, int size, float x, float y, uint color, Vertex *vertex_buffer, int vertex_count, int h_align, int v_align) {
   if (len <= 0)
-    len = wcslen(text);
+    len = static_cast<int>(wcslen(text));
 
   float width = 0;
   float height = 0;
@@ -468,7 +469,7 @@ static texture_node_t* create_string_texture(const char *text, int height) {
   int pen_y = 0;
   int size_x = 0;
   int size_y = 0;
-  int num_chars = strlen(text);
+  int num_chars = static_cast<int>(strlen(text));
 
   // go over and calculate size
   for (int n = 0; n < num_chars; n++) {
@@ -608,11 +609,11 @@ static int font_initialize() {
           break;
       }
       else {
-        fprintf(stderr, "font load failed: %s\n", buffer);
+        fp_log_warn(L"Font load failed: %S", buffer);
       }
     }
     else {
-      fprintf(stderr, "font not found: %s\n", buffer);
+      fp_log_warn(L"Font not found: %S", buffer);
     }
   }
 
@@ -905,10 +906,7 @@ static void d3d_reset_parameters(D3DPRESENT_PARAMETERS &params, HWND hwnd) {
   params.BackBufferWidth = (rect1.right - rect1.left) - (rect2.right - rect2.left);
   params.BackBufferHeight = (rect1.bottom - rect1.top) - (rect2.bottom - rect2.top);
 
-  char buff[256];
-  _snprintf(buff, sizeof(buff), "%d x %d\n", params.BackBufferWidth, params.BackBufferHeight);
-  buff[sizeof(buff) - 1] = 0;
-  OutputDebugStringA(buff);
+  fp_log_info(L"Display backbuffer size: %d x %d", params.BackBufferWidth, params.BackBufferHeight);
 
 #if SCALE_DISPLAY
   display_width = display_get_width();

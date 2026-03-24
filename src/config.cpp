@@ -14,6 +14,7 @@
 #include "gui.h"
 #include "language.h"
 #include "utilities.h"
+#include "fp_log.h"
 
 #include "../res/resource.h"
 
@@ -41,6 +42,41 @@ struct name_t {
 
 static std::vector<char*> localized_name_strings;
 
+static bool config_utf8_to_wide(const char* text, wchar_t* wide_text, size_t wide_count) {
+  if (wide_text == NULL || wide_count == 0)
+    return false;
+
+  wide_text[0] = 0;
+  if (text == NULL || text[0] == 0)
+    return false;
+
+  if (0 == MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text, -1, wide_text, static_cast<int>(wide_count))) {
+    fp_log_warn(L"Config name UTF-8->Wide conversion failed: %S", text);
+    return false;
+  }
+
+  return true;
+}
+
+static bool config_wide_to_local(const wchar_t* wide_text, char* text, size_t text_size) {
+  if (text == NULL || text_size == 0)
+    return false;
+
+  text[0] = 0;
+  if (wide_text == NULL || wide_text[0] == 0)
+    return false;
+
+  if (0 == WideCharToMultiByte(CP_ACP, 0, wide_text, -1, text, static_cast<int>(text_size), NULL, NULL)) {
+    fp_log_warn(L"Config name Wide->ACP conversion failed: %ls", wide_text);
+    return false;
+  }
+
+  return true;
+}
+
+// Legacy compatibility boundary:
+// config/script name tables are still consumed by narrow-string parsing code,
+// so UTF-8 names are converted to the current ACP here.
 static const char* utf8_to_local_name(const char *text) {
   if (text == NULL)
     return NULL;
@@ -55,21 +91,29 @@ static const char* utf8_to_local_name(const char *text) {
   if (!has_non_ascii)
     return text;
 
-  int wide_length = MultiByteToWideChar(CP_UTF8, 0, text, -1, NULL, 0);
+  int wide_length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text, -1, NULL, 0);
   if (wide_length <= 0)
     return text;
 
   wchar_t *wide_text = new wchar_t[wide_length];
-  MultiByteToWideChar(CP_UTF8, 0, text, -1, wide_text, wide_length);
+  if (!config_utf8_to_wide(text, wide_text, wide_length)) {
+    delete[] wide_text;
+    return text;
+  }
 
   int local_length = WideCharToMultiByte(CP_ACP, 0, wide_text, -1, NULL, 0, NULL, NULL);
   if (local_length <= 0) {
+    fp_log_warn(L"Config name Wide->ACP conversion failed: %S", text);
     delete[] wide_text;
     return text;
   }
 
   char *local_text = new char[local_length];
-  WideCharToMultiByte(CP_ACP, 0, wide_text, -1, local_text, local_length, NULL, NULL);
+  if (!config_wide_to_local(wide_text, local_text, local_length)) {
+    delete[] wide_text;
+    delete[] local_text;
+    return text;
+  }
   delete[] wide_text;
   localized_name_strings.push_back(local_text);
   return local_text;
@@ -773,8 +817,10 @@ void config_preload_ui_language(const char *filename) {
   config_get_media_path(line, sizeof(line), filename);
 
   FILE *fp = fopen(line, "r");
-  if (!fp)
+  if (!fp) {
+    fp_log_info(L"Config preload skipped, file not found: %S", line);
     return;
+  }
 
   while (fgets(line, sizeof(line), fp)) {
     char *s = line;
@@ -786,6 +832,7 @@ void config_preload_ui_language(const char *filename) {
       char value[16] = {0};
       if (match_line(&s, value, sizeof(value))) {
         strcpy_s(global.ui_language, value);
+        fp_log_info(L"Config preload ui language: %S", value);
       }
       break;
     }
@@ -2142,7 +2189,7 @@ char* config_dump_keybind(byte code, uint lang) {
   map_language = lang < FP_LANG_COUNT ? lang : lang_get_current();
 
   for (;;) {
-    config_save_keybind(code, buffer, buffer_size);
+    config_save_keybind(code, buffer, static_cast<int>(buffer_size));
 
     if (buffer < buffer + buffer_size - 4096)
       break;
@@ -2214,6 +2261,8 @@ void config_paste_key_setting() {
 }
 
 static int config_apply() {
+  fp_log_info(L"Applying configuration");
+
   // set keymap
   config_set_keymap(global.keymap);
 
@@ -2243,6 +2292,7 @@ int config_load(const char *filename) {
 
   char line[256];
   config_get_media_path(line, sizeof(line), filename);
+  fp_log_info(L"Loading config: %S", line);
 
   // reset config
   config_reset();
@@ -2365,8 +2415,13 @@ int config_load(const char *filename) {
 
     fclose(fp);
   }
+  else {
+    fp_log_warn(L"Config file not found, using defaults: %S", line);
+  }
 
-  return config_apply();
+  const int result = config_apply();
+  fp_log_info(L"Config load finished: path=%S result=%d ui_language=%S", line, result, global.ui_language);
+  return result;
 }
 
 // save
@@ -2375,10 +2430,13 @@ int config_save(const char *filename) {
 
   char file_path[256];
   config_get_media_path(file_path, sizeof(file_path), filename);
+  fp_log_info(L"Saving config: %S", file_path);
 
   FILE *fp = fopen(file_path, "wb");
-  if (!fp)
+  if (!fp) {
+    fp_log_error(L"Failed to save config: %S", file_path);
     return -1;
+  }
 
   if (global.instrument_type)
     fprintf(fp, "instrument type %s\r\n", instrument_type_names[global.instrument_type].name);
@@ -2458,6 +2516,7 @@ int config_save(const char *filename) {
   }
 
   fclose(fp);
+  fp_log_info(L"Config saved: %S", file_path);
   return 0;
 }
 
@@ -2465,6 +2524,7 @@ int config_save(const char *filename) {
 int config_init() {
   thread_lock lock(config_lock);
 
+  fp_log_info(L"Initializing config subsystem");
   localize_config_name_tables();
   config_reset();
   return 0;
@@ -2752,6 +2812,17 @@ int config_set_keymap(const char *mapname) {
 }
 
 
+static bool is_runtime_config_path(const char* path) {
+  if (path == NULL)
+    return false;
+
+  const char* filename = PathFindFileNameA(path);
+  if (filename == NULL)
+    filename = path;
+
+  return _stricmp(filename, "freepiano.cfg") == 0;
+}
+
 // get exe path
 void config_get_media_path(char *buff, int buff_size, const char *path) {
   if (PathIsRelativeA(path)) {
@@ -2763,12 +2834,18 @@ void config_get_media_path(char *buff, int buff_size, const char *path) {
     // remove file spec
     PathRemoveFileSpecA(base);
 
-    // to media path
+    if (is_runtime_config_path(path)) {
+      // Runtime config should live next to freepiano.exe in both Debug and Release.
+      PathAppendA(base, "\\.\\");
+    }
+    else {
+      // Other relative assets keep the historical media/data lookup behavior.
 #ifdef _DEBUG
-    PathAppendA(base, "\\..\\..\\data\\");
+      PathAppendA(base, "\\..\\..\\data\\");
 #else
-    PathAppendA(base, "\\.\\");
+      PathAppendA(base, "\\.\\");
 #endif
+    }
 
     PathCombineA(temp, base, path);
     strncpy(buff, temp, buff_size);

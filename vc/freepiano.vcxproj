@@ -105,7 +105,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>dsound.lib;winmm.lib;d3d9.lib;imm32.lib;Comctl32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>dsound.lib;winmm.lib;d3d9.lib;imm32.lib;Comctl32.lib;shell32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../3rd/libx264/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
@@ -126,7 +126,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>dsound.lib;winmm.lib;d3d9.lib;imm32.lib;Comctl32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>dsound.lib;winmm.lib;d3d9.lib;imm32.lib;Comctl32.lib;shell32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../3rd/libx264/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -151,7 +151,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>dsound.lib;winmm.lib;d3d9.lib;imm32.lib;Comctl32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>dsound.lib;winmm.lib;d3d9.lib;imm32.lib;Comctl32.lib;shell32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <TargetMachine>MachineX64</TargetMachine>
@@ -175,7 +175,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>dsound.lib;winmm.lib;d3d9.lib;imm32.lib;Comctl32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>dsound.lib;winmm.lib;d3d9.lib;imm32.lib;Comctl32.lib;shell32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
@@ -197,6 +197,7 @@
     <ClCompile Include="..\src\export.cpp" />
     <ClCompile Include="..\src\export_mp4.cpp" />
     <ClCompile Include="..\src\export_wav.cpp" />
+    <ClCompile Include="..\src\fp_log.cpp" />
     <ClCompile Include="..\src\gui.cpp" />
     <ClCompile Include="..\src\json_loader.cpp" />
     <ClCompile Include="..\src\keyboard.cpp" />
@@ -221,6 +222,7 @@
     <ClInclude Include="..\src\export.h" />
     <ClInclude Include="..\src\export_mp4.h" />
     <ClInclude Include="..\src\export_wav.h" />
+    <ClInclude Include="..\src\fp_log.h" />
     <ClInclude Include="..\src\json_loader.h" />
     <ClInclude Include="..\src\language.h" />
     <ClInclude Include="..\src\language_strdef.h" />

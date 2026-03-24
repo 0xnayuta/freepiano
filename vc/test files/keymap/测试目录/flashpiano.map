@@ -1,0 +1,179 @@
+FreePiano 2.2
+
+GroupCount	1
+Group	Set	0
+KeySignature	Set	0
+Velocity	In_0	Set	100
+Velocity	In_1	Set	100
+Sustain	Out_0	Set	0
+Label	Esc	Esc
+Keydown	F1	Note	In_0	A#5
+Label	F1	F1
+Keydown	F2	Note	In_0	C#6
+Label	F2	F2
+Keydown	F3	Note	In_0	D#6
+Label	F3	F3
+Keydown	F4	Note	In_0	F#6
+Label	F4	F4
+Keydown	F5	Note	In_0	G6
+Label	F5	F5
+Keydown	F6	Note	In_0	G#6
+Label	F6	F6
+Keydown	F7	Note	In_0	A6
+Label	F7	F7
+Keydown	F8	Note	In_0	A#6
+Label	F8	F8
+Keydown	F9	Note	In_0	B6
+Label	F9	F9
+Label	F10	F10
+Label	F11	F11
+Label	F12	F12
+Keydown	~	Note	In_0	F#2
+Label	~	~
+Keydown	1	Note	In_0	A#2
+Label	1	1
+Keydown	2	Note	In_0	C#3
+Label	2	2
+Keydown	3	Note	In_0	D#3
+Label	3	3
+Keydown	4	Note	In_0	F#3
+Label	4	4
+Keydown	5	Note	In_0	G#3
+Label	5	5
+Keydown	6	Note	In_0	A#3
+Label	6	6
+Keydown	7	Note	In_0	C#4
+Label	7	7
+Keydown	8	Note	In_0	D#4
+Label	8	8
+Keydown	9	Note	In_0	F#4
+Label	9	9
+Keydown	0	Note	In_0	G#4
+Label	0	0
+Keydown	-	Note	In_0	C#2
+Label	-	-
+Keydown	=	Note	In_0	G#5
+Label	=	=
+Label	Backspace	Backspace
+Keydown	Tab	Note	In_0	A5
+Label	Tab	Tab
+Keydown	Q	Note	In_0	E4
+Label	Q	Q
+Keydown	W	Note	In_0	D5
+Label	W	W
+Keydown	E	Note	In_0	G2
+Label	E	E
+Keydown	R	Note	In_0	F4
+Label	R	R
+Keydown	T	Note	In_0	A4
+Label	T	T
+Keydown	Y	Note	In_0	F5
+Label	Y	Y
+Keydown	U	Note	In_0	B4
+Label	U	U
+Keydown	I	Note	In_0	D3
+Label	I	I
+Keydown	O	Note	In_0	C4
+Label	O	O
+Keydown	P	Note	In_0	D4
+Label	P	P
+Keydown	{	Note	In_0	D#2
+Label	{	[
+Keydown	}	Note	In_0	D6
+Label	}	]
+Keydown	|	Note	In_0	F6
+Label	|	\
+Keydown	CapsLock	Note	In_0	C6
+Label	CapsLock	Caps
+Keydown	A	Note	In_0	C2
+Label	A	A
+Keydown	S	Note	In_0	G4
+Label	S	S
+Keydown	D	Note	In_0	F2
+Label	D	D
+Keydown	F	Note	In_0	A2
+Label	F	F
+Keydown	G	Note	In_0	B2
+Label	G	G
+Keydown	H	Note	In_0	C3
+Label	H	H
+Keydown	J	Note	In_0	E3
+Label	J	J
+Keydown	K	Note	In_0	F3
+Label	K	K
+Keydown	L	Note	In_0	G3
+Label	L	L
+Keydown	:	Note	In_0	G#2
+Label	:	;
+Keydown	"	Note	In_0	A#4
+Label	"	'
+Keydown	Enter	Note	In_0	E6
+Label	Enter	Enter
+Label	Shift	Shift
+Keydown	Z	Note	In_0	G5
+Label	Z	Z
+Keydown	X	Note	In_0	E5
+Label	X	X
+Keydown	C	Note	In_0	E2
+Label	C	C
+Keydown	V	Note	In_0	C5
+Label	V	V
+Keydown	B	Note	In_0	D2
+Label	B	B
+Keydown	N	Note	In_0	B3
+Label	N	N
+Keydown	M	Note	In_0	A3
+Label	M	M
+Keydown	<	Note	In_0	C#5
+Label	<	,
+Keydown	>	Note	In_0	D#5
+Label	>	.
+Keydown	?	Note	In_0	F#5
+Label	?	/
+Label	RShift	Shift
+Label	Ctrl	Ctrl
+Label	Win	Win
+Label	Alt	Alt
+Keydown	Space	Note	In_0	B5
+Label	Space	 
+Label	RAlt	Alt
+Label	RWin	Win
+Label	Apps	Menu
+Label	RCtrl	Ctrl
+Keydown	PrintScreen	Play
+Label	PrintScreen	Play
+Keydown	ScrollLock	Record
+Label	ScrollLock	Rec
+Keydown	Pause	Stop
+Label	Pause	Stop
+Label	Insert	Ins
+Label	Home	Home
+Label	PgUp	PgUp
+Label	Delete	Del
+Label	End	End
+Label	PgDn	PgDn
+Keydown	Up	KeySignature	Inc	1
+Label	Up	Key+
+Keydown	Left	Velocity	In_0	Dec	10
+Label	Left	Vel-
+Keydown	Down	KeySignature	Dec	1
+Label	Down	Key-
+Keydown	Right	Velocity	In_0	Inc	10
+Label	Right	Vel+
+Label	NumLock	Num
+Label	Num/	/
+Label	Num*	*
+Label	Num-	-
+Label	Num7	7
+Label	Num8	8
+Label	Num9	9
+Label	Num+	+
+Label	Num4	4
+Label	Num5	5
+Label	Num6	6
+Label	Num1	1
+Label	Num2	2
+Label	Num3	3
+Label	NumEnter	Ret
+Label	Num0	0
+Label	Num.	.

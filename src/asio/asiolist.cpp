@@ -21,14 +21,14 @@ static LONG findDrvPath (TCHAR *clsidstr,TCHAR *dllpath,int dllpathsize)
 	DWORD			index;
 	BOOL			found = FALSE;
 
-	CharLowerBuff(clsidstr,_tcslen(clsidstr));
+	CharLowerBuff(clsidstr, static_cast<DWORD>(_tcslen(clsidstr)));
 	if ((cr = RegOpenKey(HKEY_CLASSES_ROOT,COM_CLSID,&hkEnum)) == ERROR_SUCCESS) {
 
 		index = 0;
 		while (cr == ERROR_SUCCESS && !found) {
 			cr = RegEnumKey(hkEnum,index++,(LPTSTR)databuf,512);
 			if (cr == ERROR_SUCCESS) {
-				CharLowerBuff(databuf,_tcslen(databuf));
+				CharLowerBuff(databuf, static_cast<DWORD>(_tcslen(databuf)));
 				if (!(_tcscmp(databuf,clsidstr))) {
 					if ((cr = RegOpenKeyEx(hkEnum,(LPCTSTR)databuf,0,KEY_READ,&hksub)) == ERROR_SUCCESS) {
 						if ((cr = RegOpenKeyEx(hksub,(LPCTSTR)INPROC_SERVER,0,KEY_READ,&hkpath)) == ERROR_SUCCESS) {
@@ -74,8 +74,10 @@ static LPASIODRVSTRUCT newDrvStruct (HKEY hkey,TCHAR *keyname,int drvID,LPASIODR
 					if (lpdrv) {
 						memset(lpdrv,0,sizeof(ASIODRVSTRUCT));
 						lpdrv->drvID = drvID;
-						MultiByteToWideChar(CP_ACP,0,(LPCSTR)databuf,-1,(LPWSTR)wData,100);
-						if ((cr = CLSIDFromString((LPOLESTR)wData,(LPCLSID)&clsid)) == S_OK) {
+						// Legacy registry boundary: CLSID text is read as narrow registry data and
+						// converted once here before passing into COM helpers.
+						if (0 != MultiByteToWideChar(CP_ACP,0,(LPCSTR)databuf,-1,(LPWSTR)wData,100) &&
+						    (cr = CLSIDFromString((LPOLESTR)wData,(LPCLSID)&clsid)) == S_OK) {
 							memcpy(&lpdrv->clsid,&clsid,sizeof(CLSID));
 						}
 

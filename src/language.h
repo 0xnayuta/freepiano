@@ -40,7 +40,8 @@ const wchar_t* lang_load_string_w(uint uid);
 // load filter string for file dialogs (handles embedded nulls)
 const wchar_t* lang_load_filter_w(uint uid);
 
-// load lang string array
+// load legacy Win32 string resource array (legacy-only compatibility path)
+// Prefer JSON/i18n APIs for all new code.
 const char** lang_load_string_array(uint uid);
 
 // format lang str
